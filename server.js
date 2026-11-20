@@ -335,8 +335,24 @@ async function recallScene(name) {
 }
 
 // ---------------------------------------------------------------- Stream Deck
+// The key layout has its own file, shared by normal and demo mode (which have separate settings).
+const DECK_PATH = path.join(DATA, 'streamdeck.json');
+function loadDeckLayout() {
+  try { const l = JSON.parse(fs.readFileSync(DECK_PATH, 'utf8')); if (l && Array.isArray(l.pages)) return l; } catch {}
+  // 1.2.0 kept the layout inside the settings file: move it out (the real settings first).
+  for (const f of ['config.json', path.basename(CONFIG_PATH)]) {
+    try {
+      const c = JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8'));
+      if (c.streamDeck && Array.isArray(c.streamDeck.pages)) { fs.writeFileSync(DECK_PATH, JSON.stringify(c.streamDeck, null, 2)); return c.streamDeck; }
+    } catch {}
+  }
+  return null;
+}
+let deckLayout = loadDeckLayout();
+if (config.streamDeck) { delete config.streamDeck; saveConfig(); }
+
 const deck = createDeck({
-  getConfig: () => ({ ...config, streamDeck: config.streamDeck || createDeck.defaultLayout(config) }),
+  getConfig: () => ({ ...config, streamDeck: deckLayout || createDeck.defaultLayout(config) }),
   getState: (k) => state.get(k),
   applyOps,
   getMeter: (tag) => lastMeters[tag],
@@ -392,7 +408,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (p === '/api/deck' && req.method === 'GET') {
-    return json(res, { layout: config.streamDeck || createDeck.defaultLayout(config), custom: !!config.streamDeck, connected: pluginClients });
+    return json(res, { layout: deckLayout || createDeck.defaultLayout(config), custom: !!deckLayout, connected: pluginClients });
   }
   if (p === '/api/state' && req.method === 'GET') {
     return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION, demo: DEMO, canSwitchDemo: TRAY });
@@ -449,10 +465,13 @@ const server = http.createServer(async (req, res) => {
         return json(res, await recallScene(b.name));
       case '/api/deck/save': {
         // layout null = back to the default layout
-        if (b.layout && Array.isArray(b.layout.pages)) config.streamDeck = { pages: b.layout.pages.slice(0, 50) };
-        else delete config.streamDeck;
-        saveConfig();
-        broadcast('config', config);
+        if (b.layout && Array.isArray(b.layout.pages)) {
+          deckLayout = { pages: b.layout.pages.slice(0, 50) };
+          fs.writeFileSync(DECK_PATH, JSON.stringify(deckLayout, null, 2));
+        } else {
+          deckLayout = null;
+          try { fs.unlinkSync(DECK_PATH); } catch {}
+        }
         return json(res, { ok: true });
       }
       case '/api/deck/press': {

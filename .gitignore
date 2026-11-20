@@ -5,3 +5,4 @@ snapshots.demo.json
 # build output
 build/
 dist/
+streamdeck.json

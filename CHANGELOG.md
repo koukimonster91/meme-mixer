@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 (2026-11-20)
+
+### Changed
+- **One Stream Deck layout for normal and demo mode.** Switching to demo now shows your own keys, driven by the fake Tesira. The layout is saved in its own file (`streamdeck.json`). A layout made in 1.2.0 is moved there automatically. The Tesira address, tags and scenes are still separate between the two modes.
+
 ## 1.2.0 (2026-11-20)
 
 ### Added
