@@ -1,0 +1,28 @@
+{
+  "Name": "MemeMixer",
+  "Version": "0.0.0.0",
+  "Author": "MemeMixer",
+  "Description": "Mutes, volume, VU meters, scenes and pages for MemeMixer (Biamp Tesira headphone mixer). Set up which key does what on MemeMixer's Stream Deck page.",
+  "URL": "https://github.com/koukimonster91/meme-mixer",
+  "UUID": "com.mememixer.deck",
+  "Icon": "imgs/plugin",
+  "Category": "MemeMixer",
+  "CategoryIcon": "imgs/category",
+  "CodePath": "bin/plugin.js",
+  "Nodejs": { "Version": "20", "Debug": "disabled" },
+  "SDKVersion": 2,
+  "Software": { "MinimumVersion": "6.5" },
+  "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
+  "Actions": [
+    {
+      "UUID": "com.mememixer.deck.key",
+      "Name": "MemeMixer Key",
+      "Icon": "imgs/action",
+      "Tooltip": "Shows the MemeMixer key set up for this position (MemeMixer → Stream Deck page).",
+      "Controllers": ["Keypad"],
+      "SupportedInMultiActions": false,
+      "UserTitleEnabled": false,
+      "States": [{ "Image": "imgs/key", "ShowTitle": false }]
+    }
+  ]
+}

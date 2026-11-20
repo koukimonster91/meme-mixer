@@ -7,6 +7,7 @@ const path = require('path');
 const os = require('os');
 const { Tesira } = require('./tesira');
 const discover = require('./discover');
+const createDeck = require('./deck');
 
 const ROOT = __dirname;
 // MIXER_DATA: folder for settings and scenes. The installed (tray) version keeps
@@ -101,6 +102,7 @@ const state = new Map();          // "tag|attr|idx" -> value
 let aliases = [];
 const tokens = new Map();         // publishToken -> handler(value)
 let meters = {};                  // tag -> array of dB
+const lastMeters = {};            // latest meter values per tag (for the Stream Deck)
 let pending = {};                 // patches to broadcast
 let log = [];
 
@@ -129,7 +131,7 @@ setInterval(() => {
   if (Object.keys(pending).length) { broadcast('patch', pending); pending = {}; }
 }, 40);
 setInterval(() => {
-  if (Object.keys(meters).length) { broadcast('meters', meters); meters = {}; }
+  if (Object.keys(meters).length) { Object.assign(lastMeters, meters); broadcast('meters', meters); meters = {}; }
 }, 66);
 
 // ---------------------------------------------------------------- Tesira
@@ -324,6 +326,36 @@ function captureSnapshot() {
   return ops;
 }
 
+async function recallScene(name) {
+  const s = snapshots[name];
+  if (!s) return { ok: false, message: `no scene "${name}"` };
+  await applyOps(s.ops);
+  addLog(`recalled snapshot "${name}"`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- Stream Deck
+const deck = createDeck({
+  getConfig: () => ({ ...config, streamDeck: config.streamDeck || createDeck.defaultLayout(config) }),
+  getState: (k) => state.get(k),
+  applyOps,
+  getMeter: (tag) => lastMeters[tag],
+  recallScene,
+});
+// The plugin listens on /deck/events: the whole layout as key views, sent when anything changes.
+const deckClients = new Set();
+let pluginClients = 0;
+let lastDeckJson = '';
+function deckPayload() { return JSON.stringify({ ...deck.views(tesira.ready), scenes: Object.keys(snapshots) }); }
+setInterval(() => {
+  if (!deckClients.size) return;
+  const j = deckPayload();
+  if (j === lastDeckJson) return;
+  lastDeckJson = j;
+  for (const res of deckClients) res.write(`event: deck\ndata: ${j}\n\n`);
+}, 100);
+setInterval(() => { for (const res of deckClients) res.write(': keepalive\n\n'); }, 15000);
+
 // ---------------------------------------------------------------- HTTP
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
@@ -349,6 +381,18 @@ const server = http.createServer(async (req, res) => {
     clients.add(res);
     req.on('close', () => clients.delete(res));
     return;
+  }
+  if (p === '/deck/events') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+    res.write(`event: deck\ndata: ${deckPayload()}\n\n`);
+    deckClients.add(res);
+    const isPlugin = url.searchParams.get('client') === 'plugin';
+    if (isPlugin) pluginClients++;
+    req.on('close', () => { deckClients.delete(res); if (isPlugin) pluginClients--; });
+    return;
+  }
+  if (p === '/api/deck' && req.method === 'GET') {
+    return json(res, { layout: config.streamDeck || createDeck.defaultLayout(config), custom: !!config.streamDeck, connected: pluginClients });
   }
   if (p === '/api/state' && req.method === 'GET') {
     return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION, demo: DEMO, canSwitchDemo: TRAY });
@@ -401,12 +445,19 @@ const server = http.createServer(async (req, res) => {
         broadcast('snapshots', Object.keys(snapshots));
         return json(res, { ok: true });
       }
-      case '/api/snapshot/recall': {
-        const s = snapshots[b.name];
-        if (!s) return json(res, { ok: false });
-        await applyOps(s.ops);
-        addLog(`recalled snapshot "${b.name}"`);
+      case '/api/snapshot/recall':
+        return json(res, await recallScene(b.name));
+      case '/api/deck/save': {
+        // layout null = back to the default layout
+        if (b.layout && Array.isArray(b.layout.pages)) config.streamDeck = { pages: b.layout.pages.slice(0, 50) };
+        else delete config.streamDeck;
+        saveConfig();
+        broadcast('config', config);
         return json(res, { ok: true });
+      }
+      case '/api/deck/press': {
+        const r = await deck.press(Number(b.page) || 0, Number(b.key) || 0).catch((e) => ({ ok: false, message: e.message }));
+        return json(res, r);
       }
       case '/api/snapshot/delete':
         delete snapshots[b.name];

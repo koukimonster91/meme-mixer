@@ -24,10 +24,42 @@ New-Item -ItemType Directory -Force $build, $dist | Out-Null
 # 1. Web app files -> build\app.zip (no user settings, scenes or test tools)
 $stage = Join-Path $build 'app'
 New-Item -ItemType Directory -Force $stage | Out-Null
-foreach ($f in 'server.js', 'tesira.js', 'discover.js', 'mock-tesira.js') { Copy-Item (Join-Path $root $f) $stage }
+foreach ($f in 'server.js', 'tesira.js', 'discover.js', 'deck.js', 'mock-tesira.js') { Copy-Item (Join-Path $root $f) $stage }
 Set-Content (Join-Path $stage 'VERSION') $version -NoNewline
 Copy-Item (Join-Path $root 'public') (Join-Path $stage 'public') -Recurse
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.Drawing
+
+# 1b. Stream Deck plugin -> dist\MemeMixer.streamDeckPlugin (also served by the app for download)
+function Save-LogoPng([int]$size, [string]$path, [bool]$dark) {
+  $img = [System.Drawing.Image]::FromFile((Join-Path $root 'MM26_Logo_for_Tesira.png'))
+  $bmp = New-Object System.Drawing.Bitmap $size, $size
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.SmoothingMode = 'AntiAlias'; $g.InterpolationMode = 'HighQualityBicubic'; $g.PixelOffsetMode = 'HighQuality'
+  if ($dark) { $g.Clear([System.Drawing.Color]::FromArgb(255, 13, 16, 23)) }
+  $pad = if ($dark) { [int]($size * 0.16) } else { [int]($size * 0.04) }
+  $h = $size - 2 * $pad; $w = [int]($h * $img.Width / $img.Height)
+  $g.DrawImage($img, [int](($size - $w) / 2), $pad, $w, $h)
+  $g.Dispose(); $img.Dispose()
+  $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
+}
+$pluginRoot = Join-Path $build 'plugin'
+$sdp = Join-Path $pluginRoot 'com.mememixer.deck.sdPlugin'
+New-Item -ItemType Directory -Force (Join-Path $sdp 'bin'), (Join-Path $sdp 'imgs') | Out-Null
+Copy-Item (Join-Path $root 'streamdeck\plugin.js') (Join-Path $sdp 'bin\plugin.js')
+Copy-Item (Join-Path $root 'public\deck-render.js') (Join-Path $sdp 'bin\deck-render.js')
+'{ "type": "commonjs" }' | Set-Content (Join-Path $sdp 'bin\package.json') -Encoding ascii
+(Get-Content (Join-Path $root 'streamdeck\manifest.json') -Raw).Replace('"Version": "0.0.0.0"', "`"Version`": `"$version.0`"") |
+  Set-Content (Join-Path $sdp 'manifest.json') -Encoding UTF8
+foreach ($spec in @(@('plugin', 256, $false), @('category', 28, $false), @('action', 20, $false), @('key', 72, $true))) {
+  Save-LogoPng $spec[1] (Join-Path $sdp "imgs\$($spec[0]).png") $spec[2]
+  Save-LogoPng ($spec[1] * 2) (Join-Path $sdp "imgs\$($spec[0])@2x.png") $spec[2]
+}
+$pluginFile = Join-Path $dist 'MemeMixer.streamDeckPlugin'
+if (Test-Path $pluginFile) { Remove-Item $pluginFile }
+[System.IO.Compression.ZipFile]::CreateFromDirectory($sdp, $pluginFile, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+Copy-Item $pluginFile (Join-Path $stage 'public\MemeMixer.streamDeckPlugin')
+
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, (Join-Path $build 'app.zip'))
 
 # 2. Version + update source baked into the exe
@@ -40,7 +72,6 @@ static class BuildInfo
 "@ | Set-Content (Join-Path $build 'BuildInfo.cs') -Encoding UTF8
 
 # 3. Icon: the logo on a transparent background, in several sizes (PNG-compressed .ico)
-Add-Type -AssemblyName System.Drawing
 $logo = [System.Drawing.Image]::FromFile((Join-Path $root 'MM26_Logo_for_Tesira.png'))
 $sizes = 16, 24, 32, 48, 64, 128, 256
 $pngs = foreach ($s in $sizes) {

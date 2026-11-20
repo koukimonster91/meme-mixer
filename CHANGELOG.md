@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 (2026-11-20)
+
+### Added
+- **Stream Deck plugin.** You lay out the keys in MemeMixer on the new **Stream Deck** page: 15 keys (5 × 3) per page, with as many pages as you like. Each key can be one of:
+  - **Mute on/off:** a source in a mix, a mix master, all sources in a mix, an Input Master channel, a source in every mix, or all outputs. The key turns red when muted and stays in sync with the web page and phones.
+  - **Volume up / down:** every fader (sources in a mix, mix masters, Input Master channels, noise gate threshold), with your choice of step. Hold the key to repeat. Pulling a level to the bottom mutes it, the same as the faders.
+  - **VU meter:** a live meter on the key for a source, a mix master, an Input Master channel, or noise gate reduction.
+  - **Recall a scene** and **Change page** (next, previous, or a specific page).
+- The Stream Deck page shows a live preview of the keys. Click a key to set it up, or drag keys to move them. A default layout gives one page per output.
+- **Installing the plugin:** right-click the tray icon → **Install Stream Deck plugin**, or download it from the Stream Deck page. After a MemeMixer update, the tray offers to update an installed plugin.
+
 ## 1.1.1 (2026-11-20)
 
 ### Changed

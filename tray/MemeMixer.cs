@@ -530,6 +530,7 @@ class TrayApp : ApplicationContext
         menu.Items.Add(demoItem);
         menu.Items.Add(startupItem);
         menu.Items.Add(updateItem);
+        menu.Items.Add(new ToolStripMenuItem("Install Stream Deck plugin", null, delegate { InstallDeckPlugin(); }));
         menu.Items.Add(new ToolStripMenuItem("Open log folder", null, delegate { try { Process.Start(Paths.DataDir); } catch { } }));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(statusItem);
@@ -603,6 +604,7 @@ class TrayApp : ApplicationContext
         if (a == "update" && pending != null) InstallUpdate(pending);
         else if (a == "open") Util.OpenUi();
         else if (a == "log") { try { Process.Start(Paths.DataDir); } catch { } }
+        else if (a == "deckplugin") InstallDeckPlugin();
     }
 
     void CleanupOldExe()
@@ -814,7 +816,14 @@ class TrayApp : ApplicationContext
                     Balloon("MemeMixer is running", "It lives here in the taskbar tray. Right-click the icon to open it, set it to start with Windows, or check for updates.", ToolTipIcon.Info, "open");
                     Util.OpenUi();
                 }
-                else if (updated) Balloon("MemeMixer updated", "Now running version " + BuildInfo.Version + ".", ToolTipIcon.Info, "open");
+                else if (updated)
+                {
+                    Balloon("MemeMixer updated", "Now running version " + BuildInfo.Version + ".", ToolTipIcon.Info, "open");
+                    System.Windows.Forms.Timer later = new System.Windows.Forms.Timer();
+                    later.Interval = 9000;
+                    later.Tick += delegate { later.Stop(); later.Dispose(); CheckDeckPluginVersion(); };
+                    later.Start();
+                }
                 else if (!startup) Util.OpenUi();
             });
         });
@@ -881,6 +890,40 @@ class TrayApp : ApplicationContext
             Balloon("MemeMixer", now ? "MemeMixer will start when you sign in to Windows." : "MemeMixer won't start with Windows.", ToolTipIcon.Info, null);
         }
         catch (Exception ex) { MessageBox.Show("Couldn't change the startup setting: " + ex.Message, Paths.AppName); }
+    }
+
+    // ------------------------------------------------------------------ Stream Deck plugin
+    static string DeckPluginFile { get { return Path.Combine(Paths.AppDir, "public", "MemeMixer.streamDeckPlugin"); } }
+    static string InstalledDeckManifest
+    {
+        get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Elgato", "StreamDeck", "Plugins", "com.mememixer.deck.sdPlugin", "manifest.json"); }
+    }
+
+    // Opening a .streamDeckPlugin file hands it to the Stream Deck app, which installs it.
+    void InstallDeckPlugin()
+    {
+        if (!File.Exists(DeckPluginFile)) { MessageBox.Show("This build doesn't include the Stream Deck plugin.", Paths.AppName); return; }
+        try { Process.Start(new ProcessStartInfo(DeckPluginFile) { UseShellExecute = true }); }
+        catch (Exception ex)
+        {
+            Paths.Log("deck plugin install: " + ex.Message);
+            MessageBox.Show("Couldn't open the plugin. Install the Elgato Stream Deck app first (from elgato.com/downloads), then choose Install Stream Deck plugin again.",
+                Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    // After an update, offer to update an installed plugin whose version is behind.
+    void CheckDeckPluginVersion()
+    {
+        try
+        {
+            if (!File.Exists(InstalledDeckManifest)) return;
+            Dictionary<string, object> m = Json.Obj(File.ReadAllText(InstalledDeckManifest));
+            string v = Json.Str(m, "Version");
+            if (v != null && Util.ParseVersion(v) < Util.ParseVersion(BuildInfo.Version))
+                Balloon("Update the Stream Deck plugin", "Click here to update the MemeMixer Stream Deck plugin to " + BuildInfo.Version + ".", ToolTipIcon.Info, "deckplugin");
+        }
+        catch (Exception ex) { Paths.Log("deck plugin version: " + ex.Message); }
     }
 
     static bool DemoOn { get { return File.Exists(Paths.DemoFlag); } }

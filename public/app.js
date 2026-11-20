@@ -82,6 +82,7 @@ const store = {
 };
 
 const ICONS = {
+  deck: '<rect x="2" y="5" width="20" height="14" rx="3"/><rect x="5" y="8" width="3" height="3" rx="0.6"/><rect x="10.5" y="8" width="3" height="3" rx="0.6"/><rect x="16" y="8" width="3" height="3" rx="0.6"/><rect x="5" y="13" width="3" height="3" rx="0.6"/><rect x="10.5" y="13" width="3" height="3" rx="0.6"/><rect x="16" y="13" width="3" height="3" rx="0.6"/>',
   head: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="5" height="7" rx="2"/><rect x="16" y="14" width="5" height="7" rx="2"/>',
   usb: '<path d="M12 3v14"/><path d="M9 6l3-3 3 3"/><path d="M12 13l-5-3V7"/><path d="M12 11l5-3V5"/><circle cx="12" cy="19" r="2"/>',
   input: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/>',
@@ -335,6 +336,7 @@ function pages() {
     { id: 'input', group: 'Inputs', title: 'Input Master', icon: 'input', render: renderInput },
     { id: 'gate', group: 'Inputs', title: 'Noise Gate', icon: 'gate', render: renderGate },
     { id: 'extras', group: 'Tools', title: 'Extras', icon: 'extras', render: renderExtras },
+    { id: 'deck', group: 'Tools', title: 'Stream Deck', icon: 'deck', render: renderDeck },
     { id: 'settings', group: 'Tools', title: 'Settings', icon: 'settings', render: renderSettings },
   ];
 }
@@ -857,6 +859,211 @@ function renderExtras() {
 }
 
 // --- settings page
+// --- Stream Deck page: lay out the 15 keys (5 x 3) the MemeMixer plugin shows
+const DECK_KINDS = {
+  mute: [['source', 'Source in a mix'], ['master', 'Mix master'], ['allSources', 'All sources in a mix'], ['input', 'Input Master channel'], ['sourceEverywhere', 'Source in every mix'], ['allOutputs', 'All outputs (every master)']],
+  volume: [['source', 'Source in a mix'], ['master', 'Mix master'], ['input', 'Input Master channel'], ['gate', 'Noise gate threshold']],
+  meter: [['source', 'Source (input meter)'], ['master', 'Mix master'], ['input', 'Input Master channel'], ['gate', 'Noise gate reduction']],
+};
+
+function renderDeck() {
+  $('#pageSub').textContent = 'Keys for the MemeMixer Stream Deck plugin · 15 keys (5 × 3) per page';
+  const cfg = S.config;
+  let layout = null, live = null, pg = store.get('deck:page', 0), sel = null, saveTimer, dragFrom = null;
+
+  const status = h('span', { class: 'deck-status' }, 'Plugin: checking…');
+  const tabs = h('div', { class: 'deck-tabs' });
+  const grid = h('div', { class: 'deck-grid' });
+  const editor = h('div', { class: 'card deck-editor' });
+
+  const save = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => post('/api/deck/save', { layout }), 250);
+  };
+  const keyAt = (i) => ((layout.pages[pg] || {}).keys || [])[i] || null;
+  const setKey = (i, k) => {
+    const p = layout.pages[pg];
+    p.keys = Array.from({ length: 15 }, (_, j) => (p.keys || [])[j] || null);
+    p.keys[i] = k;
+    save(); drawGrid(); drawEditor();
+  };
+
+  // Preview: live key images from the server (what the Stream Deck shows right now).
+  const es = new EventSource('/deck/events');
+  es.addEventListener('deck', (e) => {
+    if (!grid.isConnected) { es.close(); return; }
+    live = JSON.parse(e.data);
+    drawGrid();
+  });
+
+  function drawTabs() {
+    tabs.replaceChildren(...layout.pages.map((p, i) => h('button', { class: `chip ${i === pg ? 'on' : ''}`, onclick: () => { pg = i; store.set('deck:page', i); sel = null; drawAll(); } }, p.name || `Page ${i + 1}`)),
+      h('button', { class: 'chip add', title: 'Add a page', onclick: () => { layout.pages.push({ name: `Page ${layout.pages.length + 1}`, keys: Array(15).fill(null) }); pg = layout.pages.length - 1; sel = null; save(); drawAll(); } }, '+ Page'));
+    syncName(); // keep the page-name box in step with the selected tab
+  }
+
+  function drawGrid() {
+    if (!layout) return;
+    const views = live && live.pages[pg] ? live.pages[pg].keys : [];
+    grid.replaceChildren(...Array.from({ length: 15 }, (_, i) => {
+      const v = views[i] || null;
+      const k = keyAt(i);
+      // Until the server has the new layout, show an empty key rather than a stale one.
+      const shown = k ? v : null;
+      const img = h('img', { alt: '', draggable: 'false', src: 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(DeckRender.renderKey(shown)) });
+      const el = h('button', { class: `deck-key ${sel === i ? 'sel' : ''} ${k ? '' : 'empty'}`, draggable: 'true', title: k ? 'Click to edit · drag to move' : 'Click to set up this key',
+        onclick: () => { sel = i; drawGrid(); drawEditor(); } }, img, k ? null : h('span', { class: 'plus' }, '+'));
+      el.addEventListener('dragstart', () => { dragFrom = i; });
+      el.addEventListener('dragover', (e) => e.preventDefault());
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragFrom == null || dragFrom === i) return;
+        const p = layout.pages[pg];
+        p.keys = Array.from({ length: 15 }, (_, j) => (p.keys || [])[j] || null);
+        [p.keys[dragFrom], p.keys[i]] = [p.keys[i], p.keys[dragFrom]];
+        sel = i; dragFrom = null; save(); drawGrid(); drawEditor();
+      });
+      return el;
+    }));
+  }
+
+  const field = (label, control) => h('div', { class: 'field' }, h('label', {}, label), control);
+  const select = (opts, value, onchange) => {
+    const s = h('select', { class: 'input' }, opts.map(([v, t]) => h('option', { value: v }, t)));
+    s.value = value == null ? '' : String(value);
+    s.addEventListener('change', () => onchange(s.value));
+    return s;
+  };
+
+  function drawEditor() {
+    if (sel == null) {
+      editor.replaceChildren(h('h2', {}, 'Key'), h('p', { class: 'hint' }, 'Click a key to choose what it does. Drag keys to move them around. Changes are saved straight away and show on the Stream Deck within a moment.'));
+      return;
+    }
+    const k = keyAt(sel);
+    const typeVal = !k ? '' : k.type === 'volume' ? (k.dir === 'down' ? 'voldown' : 'volup') : k.type;
+    const kids = [h('h2', {}, `Key ${sel + 1}`, h('span', { class: 'deck-pos' }, ` · row ${Math.floor(sel / 5) + 1}, column ${(sel % 5) + 1}`))];
+    kids.push(h('div', { class: 'row' }, field('Does', select([['', 'Nothing (empty)'], ['mute', 'Mute on/off'], ['volup', 'Volume up'], ['voldown', 'Volume down'], ['meter', 'VU meter'], ['scene', 'Recall a scene'], ['page', 'Change page']], typeVal, (v) => {
+      if (!v) return setKey(sel, null);
+      const prevTarget = k && k.target;
+      if (v === 'scene') return setKey(sel, { type: 'scene', name: (S.snapshots || [])[0] || '' });
+      if (v === 'page') return setKey(sel, { type: 'page', to: 'next' });
+      const type = v === 'volup' || v === 'voldown' ? 'volume' : v;
+      const kinds = DECK_KINDS[type].map(([x]) => x);
+      const target = prevTarget && kinds.includes(prevTarget.kind) ? prevTarget : { kind: 'master', output: 0 };
+      const nk = { type, target };
+      if (type === 'volume') { nk.dir = v === 'voldown' ? 'down' : 'up'; nk.step = (k && k.step) || 1; }
+      setKey(sel, nk);
+    }))));
+
+    if (k && DECK_KINDS[k.type]) {
+      const t = k.target || {};
+      const upd = (patch) => setKey(sel, { ...k, target: { ...t, ...patch } });
+      kids.push(h('div', { class: 'row' }, field('Controls', select(DECK_KINDS[k.type], t.kind, (kind) => {
+        const nt = { kind };
+        if (['source', 'master', 'allSources'].includes(kind)) nt.output = t.output ?? 0;
+        if (['source', 'sourceEverywhere'].includes(kind)) nt.source = t.source || cfg.sources[0].name;
+        if (kind === 'input') nt.channel = cfg.inputChannels[0].channel;
+        if (k.type === 'meter' && kind === 'source') delete nt.output;
+        setKey(sel, { ...k, target: nt });
+      }))));
+      const row = h('div', { class: 'row' });
+      const needsOutput = ['master', 'allSources'].includes(t.kind) || (t.kind === 'source' && k.type !== 'meter');
+      if (needsOutput) {
+        row.append(field('Output', select(cfg.outputs.map((o, i) => [i, o.name]), t.output ?? 0, (v) => {
+          const out = cfg.outputs[Number(v)];
+          const patch = { output: Number(v) };
+          if (t.kind === 'source' && !out.sources.includes(t.source)) patch.source = out.sources[0];
+          upd(patch);
+        })));
+      }
+      if (t.kind === 'source' || t.kind === 'sourceEverywhere') {
+        const out = cfg.outputs[t.output ?? 0];
+        const names = t.kind === 'source' && k.type !== 'meter' && out ? out.sources : cfg.sources.map((s) => s.name);
+        row.append(field('Source', select(names.map((n) => [n, n]), t.source, (v) => upd({ source: v }))));
+      }
+      if (t.kind === 'input') {
+        row.append(field('Channel', select(cfg.inputChannels.filter((c) => !(c.link && c.link < c.channel)).map((c) => [c.channel, c.link ? c.name.replace(/ [LR]$/, '') + ' (L+R)' : c.name]), t.channel, (v) => upd({ channel: Number(v) }))));
+      }
+      if (row.childNodes.length) kids.push(row);
+      if (k.type === 'volume') {
+        const step = h('input', { class: 'input mono', type: 'number', min: 0.1, max: 20, step: 0.5, value: k.step || 1 });
+        step.addEventListener('change', () => { const n = Math.min(20, Math.max(0.1, parseFloat(step.value) || 1)); setKey(sel, { ...k, step: n }); });
+        kids.push(h('div', { class: 'row' }, field(`Step per press (${t.kind === 'gate' ? 'dBu' : 'dB'}) · hold the key to repeat`, step)));
+      }
+    }
+    if (k && k.type === 'scene') {
+      const names = S.snapshots || [];
+      kids.push(h('div', { class: 'row' }, names.length
+        ? field('Scene', select(names.map((n) => [n, n]), k.name, (v) => setKey(sel, { ...k, name: v })))
+        : h('p', { class: 'hint' }, 'No scenes yet. Save one on the Extras page first.')));
+    }
+    if (k && k.type === 'page') {
+      kids.push(h('div', { class: 'row' }, field('Goes to', select([['next', 'Next page'], ['prev', 'Previous page'], ...layout.pages.map((p, i) => [i, p.name || `Page ${i + 1}`])], k.to, (v) => setKey(sel, { ...k, to: v === 'next' || v === 'prev' ? v : Number(v) })))));
+    }
+    if (k) {
+      const label = h('input', { class: 'input', placeholder: 'Automatic', maxlength: 14, value: k.label || '' });
+      label.addEventListener('change', () => setKey(sel, { ...k, label: label.value.trim() || undefined }));
+      kids.push(h('div', { class: 'row' }, field('Name on the key (optional)', label)));
+      kids.push(h('div', { class: 'row', style: { marginTop: '6px' } }, h('button', { class: 'btn sm', onclick: () => setKey(sel, null) }, 'Clear key')));
+    }
+    editor.replaceChildren(...kids);
+  }
+
+  function drawAll() { drawTabs(); drawGrid(); drawEditor(); }
+
+  const pageName = h('input', { class: 'input', maxlength: 24 });
+  const pageTools = h('div', { class: 'row deck-page-tools' },
+    field('Page name', pageName),
+    h('button', { class: 'btn sm', title: 'Move page left', onclick: () => movePage(-1) }, '◀'),
+    h('button', { class: 'btn sm', title: 'Move page right', onclick: () => movePage(1) }, '▶'),
+    h('button', { class: 'btn sm danger', onclick: () => {
+      if (layout.pages.length < 2) return toast('Keep at least one page');
+      if (!confirm(`Delete page "${layout.pages[pg].name}"?`)) return;
+      layout.pages.splice(pg, 1); pg = Math.max(0, pg - 1); sel = null; save(); drawAll(); syncName();
+    } }, 'Delete page'));
+  const syncName = () => { pageName.value = (layout.pages[pg] || {}).name || ''; };
+  pageName.addEventListener('change', () => { layout.pages[pg].name = pageName.value.trim() || `Page ${pg + 1}`; save(); drawTabs(); });
+  function movePage(d) {
+    const j = pg + d;
+    if (j < 0 || j >= layout.pages.length) return;
+    [layout.pages[pg], layout.pages[j]] = [layout.pages[j], layout.pages[pg]];
+    pg = j; save(); drawAll();
+  }
+
+  const reset = h('button', { class: 'btn sm', onclick: async () => {
+    if (!confirm('Replace all Stream Deck pages with the default layout (one page per output)?')) return;
+    await post('/api/deck/save', { layout: null });
+    const r = await fetch('/api/deck').then((x) => x.json());
+    layout = r.layout; pg = 0; sel = null; drawAll();
+    toast('Default layout restored');
+  } }, 'Reset to default');
+
+  const install = h('div', { class: 'card' }, h('h2', {}, 'Set up your Stream Deck'),
+    h('ol', { class: 'deck-steps' },
+      h('li', {}, 'Install the Elgato Stream Deck app if you haven\'t already.'),
+      h('li', {}, 'Install the MemeMixer plugin: ', h('a', { href: 'MemeMixer.streamDeckPlugin', download: 'MemeMixer.streamDeckPlugin' }, 'download it'), ' and double-click the file, or right-click the MemeMixer tray icon → Install Stream Deck plugin.'),
+      h('li', {}, 'In the Stream Deck app, find MemeMixer in the action list and drag MemeMixer Key onto all 15 keys. Tip: make a new profile for it.'),
+      h('li', {}, 'That\'s it. Each key shows what you set on this page, and pages are switched with Change page keys.')),
+    h('div', { class: 'row' }, status, reset));
+
+  $('#page').append(h('div', { class: 'deck-layout' },
+    h('div', { class: 'deck-main' }, tabs, pageTools, h('div', { class: 'deck-frame' }, grid)),
+    h('div', { class: 'deck-side' }, editor, install)));
+
+  const pollStatus = async () => {
+    if (!grid.isConnected) return;
+    try {
+      const r = await fetch('/api/deck').then((x) => x.json());
+      status.textContent = r.connected ? 'Stream Deck plugin: connected' : 'Stream Deck plugin: not connected';
+      status.classList.toggle('ok', r.connected > 0);
+      if (!layout) { layout = r.layout; if (pg >= layout.pages.length) pg = 0; drawAll(); }
+    } catch {}
+    setTimeout(pollStatus, 4000);
+  };
+  pollStatus();
+}
+
 function renderSettings() {
   $('#pageSub').textContent = `Connection and instance tags${S.version && S.version !== 'dev' ? ` · MemeMixer v${S.version}` : ''}`;
   const c = S.config;
@@ -996,6 +1203,7 @@ function connectEvents() {
   es.addEventListener('config', (e) => {
     S.config = JSON.parse(e.data);
     const active = document.activeElement;
+    if (location.hash === '#deck') return; // the Stream Deck page keeps its own copy of the layout
     if (!active || !active.matches('input, select')) renderPage();
     else for (const c of comps) c.presets && c.presets();
   });

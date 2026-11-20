@@ -16,10 +16,24 @@ Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) ove
    - **Open MemeMixer** (double-clicking the icon does the same),
    - **Demo mode (no Tesira needed)**: switches to a built-in fake Tesira so you can try everything without hardware. Demo settings and scenes are separate from your real ones. The same switch is in **Settings → Demo mode**,
    - **Run when Windows starts** (on/off),
+   - **Install Stream Deck plugin** (see below),
    - **Check for updates**: if a newer release is on GitHub, it downloads it, installs it and restarts by itself. It also checks on its own every 12 hours and pops up a notice you can click to install,
    - **Open log folder**, and **Exit**.
 
 Settings and scenes are kept in `%LOCALAPPDATA%\MemeMixer\data` and survive updates. To uninstall, go to **Settings → Apps → MemeMixer → Uninstall**.
+
+### Stream Deck
+MemeMixer comes with a Stream Deck plugin, made for the 15-key Stream Deck.
+1. Install the Elgato Stream Deck app.
+2. Right-click the MemeMixer tray icon → **Install Stream Deck plugin**. You can also download it from MemeMixer's **Stream Deck** page and double-click the file.
+3. In the Stream Deck app, drag **MemeMixer → MemeMixer Key** onto all 15 keys. A new profile for it is a good idea.
+
+Every key is then set up in MemeMixer on the **Stream Deck** page:
+- **Mute on/off:** sources in a mix, mix masters, all sources in a mix, Input Master channels, a source in every mix, or all outputs.
+- **Volume up/down:** any fader. Hold the key to repeat.
+- **VU meter**, **recall a scene**, and **change page**.
+
+Changes show up on the Stream Deck within a moment. The plugin finds MemeMixer on this PC by itself. If MemeMixer isn't running, the keys say so.
 
 ### Publishing an update
 1. Raise the number in `VERSION` (e.g. `1.0.0` → `1.0.1`) and note the changes in `CHANGELOG.md`.
@@ -46,6 +60,7 @@ On first run, open **Settings**:
 | Input Master | Level and mute for each Input Master channel. TV/AUX and PC L/R are linked by default; use the link button to unlink them. |
 | Noise Gate | Threshold, attack, release, bypass, and live gain-reduction meters. |
 | Extras | Mute all outputs, mute one mic in every mix, copy a mix between outputs, scenes (snapshots saved on this PC), Tesira preset recall, phantom power and mic gain per AEC input, and a TTP command console. |
+| Stream Deck | Lay out the keys of the MemeMixer Stream Deck plugin: mutes, volume up/down, VU meters, scenes and page keys, with a live preview. |
 | Settings | Connection settings, network scan, auto-connect, instance tags, phone QR code and the event log. |
 
 Every fader works the same way:
