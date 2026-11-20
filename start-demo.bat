@@ -1,5 +1,5 @@
 @echo off
-title Meme Mixer (demo with mock Tesira)
+title MemeMixer (demo with mock Tesira)
 cd /d "%~dp0"
 start "Mock Tesira" /min node mock-tesira.js 2323
 set MIXER_CONFIG=config.demo.json

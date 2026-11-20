@@ -18,9 +18,9 @@ gh release view $tag --repo $repo *> $null
 if ($LASTEXITCODE -eq 0) { throw "$tag is already released. Raise the number in VERSION first." }
 
 & (Join-Path $root 'build.ps1') -Repo $repo
-if (-not $Notes) { $Notes = "Meme Mixer $version" }
+if (-not $Notes) { $Notes = "MemeMixer $version" }
 
-gh release create $tag (Join-Path $root 'dist\MemeMixer.exe') --repo $repo --title "Meme Mixer $version" --notes $Notes
+gh release create $tag (Join-Path $root 'dist\MemeMixer.exe') --repo $repo --title "MemeMixer $version" --notes $Notes
 if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
 Write-Host "Released $tag. Installed copies will offer it within 12 hours, or right away from 'Check for updates'."
 Write-Host "Download link for new users: https://github.com/$repo/releases/latest/download/MemeMixer.exe"

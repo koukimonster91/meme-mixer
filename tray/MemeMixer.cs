@@ -1,4 +1,4 @@
-// Meme Mixer tray launcher / installer / updater.
+// MemeMixer tray launcher / installer / updater.
 // Built with the C# compiler that ships with Windows (.NET Framework 4.x, C# 5) by build.ps1.
 //
 // Run from anywhere (e.g. Downloads): installs itself into %LOCALAPPDATA%\MemeMixer and starts.
@@ -22,9 +22,9 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("Meme Mixer")]
-[assembly: AssemblyProduct("Meme Mixer")]
-[assembly: AssemblyDescription("Meme Mixer - Biamp Tesira headphone mixer")]
+[assembly: AssemblyTitle("MemeMixer")]
+[assembly: AssemblyProduct("MemeMixer")]
+[assembly: AssemblyDescription("MemeMixer - Biamp Tesira headphone mixer")]
 [assembly: AssemblyVersion(BuildInfo.Version + ".0")]
 [assembly: AssemblyFileVersion(BuildInfo.Version + ".0")]
 
@@ -47,7 +47,7 @@ static class Paths
     public const string QuitEventName = "Local\\MemeMixer.Quit";
     public const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\MemeMixer";
-    public const string AppName = "Meme Mixer";
+    public const string AppName = "MemeMixer";
     // For testing: don't create shortcuts / startup / Apps & Features entries.
     public static readonly bool NoSystem = Environment.GetEnvironmentVariable("MEMEMIXER_NO_SYSTEM") == "1";
 
@@ -109,7 +109,7 @@ static class Program
         catch (Exception ex)
         {
             Paths.Log("fatal: " + ex);
-            MessageBox.Show("Meme Mixer stopped because of an error:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show("MemeMixer stopped because of an error:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
@@ -314,7 +314,7 @@ static class Installer
             bool wasInstalled = File.Exists(Paths.Exe);
             if (!Util.StopRunningTray(15000))
             {
-                MessageBox.Show("Meme Mixer is running and couldn't be closed. Exit it from the tray icon and run this again.", Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("MemeMixer is running and couldn't be closed. Exit it from the tray icon and run this again.", Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
             try { if (File.Exists(Paths.OldExe)) File.Delete(Paths.OldExe); } catch { }
@@ -329,18 +329,43 @@ static class Installer
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Couldn't install Meme Mixer:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show("Couldn't install MemeMixer:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
     }
 
-    public static string StartMenuLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Meme Mixer.lnk"); } }
-    public static string DesktopLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Meme Mixer.lnk"); } }
+    public static string StartMenuLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "MemeMixer.lnk"); } }
+    public static string DesktopLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "MemeMixer.lnk"); } }
+
+    // Before 1.1.1 the app was called "Meme Mixer" (two words).
+    const string LegacyName = "Meme Mixer";
+    static string LegacyStartMenuLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), LegacyName + ".lnk"); } }
+    static string LegacyDesktopLink { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), LegacyName + ".lnk"); } }
+
+    // Rename shortcuts and the startup entry left by older versions.
+    public static void MigrateLegacyNames()
+    {
+        try
+        {
+            if (File.Exists(LegacyStartMenuLink)) { File.Delete(LegacyStartMenuLink); Util.CreateShortcut(StartMenuLink, Paths.Exe, "", "MemeMixer - Tesira headphone mixer"); Paths.Log("renamed Start Menu shortcut"); }
+            if (File.Exists(LegacyDesktopLink)) { File.Delete(LegacyDesktopLink); Util.CreateShortcut(DesktopLink, Paths.Exe, "", "MemeMixer - Tesira headphone mixer"); Paths.Log("renamed desktop shortcut"); }
+            using (RegistryKey k = Registry.CurrentUser.OpenSubKey(Paths.RunKey, true))
+            {
+                if (k != null && k.GetValue(LegacyName) != null)
+                {
+                    k.DeleteValue(LegacyName, false);
+                    k.SetValue(Paths.AppName, "\"" + Paths.Exe + "\" --startup");
+                    Paths.Log("renamed startup entry");
+                }
+            }
+        }
+        catch (Exception ex) { Paths.Log("rename legacy entries: " + ex.Message); }
+    }
 
     public static void CreateShortcuts()
     {
-        try { Util.CreateShortcut(StartMenuLink, Paths.Exe, "", "Meme Mixer - Tesira headphone mixer"); } catch (Exception ex) { Paths.Log("start menu shortcut: " + ex.Message); }
-        try { Util.CreateShortcut(DesktopLink, Paths.Exe, "", "Meme Mixer - Tesira headphone mixer"); } catch (Exception ex) { Paths.Log("desktop shortcut: " + ex.Message); }
+        try { Util.CreateShortcut(StartMenuLink, Paths.Exe, "", "MemeMixer - Tesira headphone mixer"); } catch (Exception ex) { Paths.Log("start menu shortcut: " + ex.Message); }
+        try { Util.CreateShortcut(DesktopLink, Paths.Exe, "", "MemeMixer - Tesira headphone mixer"); } catch (Exception ex) { Paths.Log("desktop shortcut: " + ex.Message); }
     }
 
     public static void RegisterUninstall()
@@ -387,7 +412,7 @@ static class Installer
         try
         {
             ProcessStartInfo psi = new ProcessStartInfo("netsh",
-                "advfirewall firewall add rule name=\"Meme Mixer\" dir=in action=allow enable=yes profile=private,domain program=\"" + Paths.NodeExe + "\"");
+                "advfirewall firewall add rule name=\"MemeMixer\" dir=in action=allow enable=yes profile=private,domain program=\"" + Paths.NodeExe + "\"");
             psi.Verb = "runas";
             psi.UseShellExecute = true;
             psi.WindowStyle = ProcessWindowStyle.Hidden;
@@ -400,18 +425,22 @@ static class Installer
 
     public static void Uninstall(bool quiet)
     {
-        if (!quiet && MessageBox.Show("Remove Meme Mixer from this PC?\n\nThis also deletes its settings and scenes.", Paths.AppName,
+        if (!quiet && MessageBox.Show("Remove MemeMixer from this PC?\n\nThis also deletes its settings and scenes.", Paths.AppName,
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
         Util.StopRunningTray(15000);
         try { RunAtStartup = false; } catch { }
         try { Registry.CurrentUser.DeleteSubKeyTree(Paths.UninstallKey, false); } catch { }
         try { File.Delete(StartMenuLink); } catch { }
         try { File.Delete(DesktopLink); } catch { }
+        try { File.Delete(LegacyStartMenuLink); } catch { }
+        try { File.Delete(LegacyDesktopLink); } catch { }
+        try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(Paths.RunKey, true)) if (k != null) k.DeleteValue(LegacyName, false); } catch { }
         if (!quiet && Environment.GetEnvironmentVariable("MEMEMIXER_NO_FIREWALL") != "1")
         {
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo("netsh", "advfirewall firewall delete rule name=\"Meme Mixer\"");
+                // Remove the rule under both the current and the old name.
+                ProcessStartInfo psi = new ProcessStartInfo("cmd.exe", "/c netsh advfirewall firewall delete rule name=\"MemeMixer\" & netsh advfirewall firewall delete rule name=\"" + LegacyName + "\"");
                 psi.Verb = "runas"; psi.UseShellExecute = true; psi.WindowStyle = ProcessWindowStyle.Hidden;
                 Process p = Process.Start(psi); if (p != null) p.WaitForExit(15000);
             }
@@ -421,7 +450,7 @@ static class Installer
         ProcessStartInfo del = new ProcessStartInfo("cmd.exe", "/c ping 127.0.0.1 -n 3 >nul & rmdir /s /q \"" + Paths.Home + "\"");
         del.CreateNoWindow = true; del.UseShellExecute = false; del.WorkingDirectory = Path.GetTempPath();
         Process.Start(del);
-        if (!quiet) MessageBox.Show("Meme Mixer has been removed.", Paths.AppName);
+        if (!quiet) MessageBox.Show("MemeMixer has been removed.", Paths.AppName);
     }
 }
 
@@ -432,7 +461,7 @@ class SetupForm : Form
 
     public SetupForm()
     {
-        Text = "Meme Mixer setup";
+        Text = "MemeMixer setup";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -442,7 +471,7 @@ class SetupForm : Form
         Font = new Font("Segoe UI", 9.5f);
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         Label title = new Label();
-        title.Text = "Setting up Meme Mixer";
+        title.Text = "Setting up MemeMixer";
         title.Font = new Font("Segoe UI Semibold", 13f);
         title.AutoSize = true; title.Location = new Point(20, 16);
         status.AutoSize = false; status.Location = new Point(22, 52); status.Size = new Size(380, 22);
@@ -490,7 +519,7 @@ class TrayApp : ApplicationContext
         IntPtr forceHandle = ui.Handle; // BeginInvoke target for background threads
 
         ContextMenuStrip menu = new ContextMenuStrip();
-        openItem = new ToolStripMenuItem("Open Meme Mixer", null, delegate { Util.OpenUi(); });
+        openItem = new ToolStripMenuItem("Open MemeMixer", null, delegate { Util.OpenUi(); });
         openItem.Font = new Font(openItem.Font, FontStyle.Bold);
         startupItem = new ToolStripMenuItem("Run when Windows starts", null, delegate { ToggleStartup(); });
         updateItem = new ToolStripMenuItem("Check for updates", null, delegate { UpdateClicked(); });
@@ -510,7 +539,7 @@ class TrayApp : ApplicationContext
         menu.Opening += delegate { try { startupItem.Checked = Installer.RunAtStartup; } catch { } demoItem.Checked = DemoOn; };
 
         try { tray.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { tray.Icon = SystemIcons.Application; }
-        tray.Text = "Meme Mixer";
+        tray.Text = "MemeMixer";
         tray.ContextMenuStrip = menu;
         tray.DoubleClick += delegate { Util.OpenUi(); };
         tray.BalloonTipClicked += delegate { BalloonClicked(); };
@@ -558,7 +587,7 @@ class TrayApp : ApplicationContext
         OnUi(delegate
         {
             statusItem.Text = text;
-            tray.Text = ("Meme Mixer - " + text).Length > 63 ? "Meme Mixer" : "Meme Mixer - " + text;
+            tray.Text = ("MemeMixer - " + text).Length > 63 ? "MemeMixer" : "MemeMixer - " + text;
             if (setupForm != null && !setupForm.IsDisposed) setupForm.SetStatus(text, pct);
         });
     }
@@ -603,7 +632,7 @@ class TrayApp : ApplicationContext
                     try { Installer.RunAtStartup = true; } catch { }
                     Installer.AddFirewallRule();
                 }
-                if (!Paths.NoSystem) Installer.RegisterUninstall();
+                if (!Paths.NoSystem) { Installer.MigrateLegacyNames(); Installer.RegisterUninstall(); }
             }
             catch (Exception ex) { error = ex.Message; Paths.Log("setup failed: " + ex); }
 
@@ -614,7 +643,7 @@ class TrayApp : ApplicationContext
                 {
                     Status("Setup failed", 0);
                     if (setupForm != null && !setupForm.IsDisposed) setupForm.Hide();
-                    DialogResult r = MessageBox.Show("Meme Mixer couldn't finish setting up:\n\n" + error +
+                    DialogResult r = MessageBox.Show("MemeMixer couldn't finish setting up:\n\n" + error +
                         "\n\nCheck the internet connection and try again.", Paths.AppName, MessageBoxButtons.RetryCancel, MessageBoxIcon.Warning);
                     if (r == DialogResult.Retry) { if (setupForm != null && !setupForm.IsDisposed) setupForm.Show(); RunSetup(); }
                     else ExitApp();
@@ -633,7 +662,7 @@ class TrayApp : ApplicationContext
         string verFile = Path.Combine(Paths.AppDir, "VERSION");
         string have = File.Exists(verFile) ? File.ReadAllText(verFile).Trim() : null;
         if (have == BuildInfo.Version && File.Exists(Path.Combine(Paths.AppDir, "server.js"))) return;
-        Status("Unpacking Meme Mixer " + BuildInfo.Version + "…", -1);
+        Status("Unpacking MemeMixer " + BuildInfo.Version + "…", -1);
         string tmp = Paths.AppDir + ".tmp";
         if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
         Directory.CreateDirectory(tmp);
@@ -752,7 +781,7 @@ class TrayApp : ApplicationContext
             Paths.Log("start server: " + ex);
             Status("Couldn't start", 0);
             if (setupForm != null && !setupForm.IsDisposed) setupForm.Close();
-            MessageBox.Show("Couldn't start Meme Mixer:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show("Couldn't start MemeMixer:\n\n" + ex.Message, Paths.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -782,10 +811,10 @@ class TrayApp : ApplicationContext
                 if (quietRestart) { quietRestart = false; return; }
                 if (firstRun)
                 {
-                    Balloon("Meme Mixer is running", "It lives here in the taskbar tray. Right-click the icon to open it, set it to start with Windows, or check for updates.", ToolTipIcon.Info, "open");
+                    Balloon("MemeMixer is running", "It lives here in the taskbar tray. Right-click the icon to open it, set it to start with Windows, or check for updates.", ToolTipIcon.Info, "open");
                     Util.OpenUi();
                 }
-                else if (updated) Balloon("Meme Mixer updated", "Now running version " + BuildInfo.Version + ".", ToolTipIcon.Info, "open");
+                else if (updated) Balloon("MemeMixer updated", "Now running version " + BuildInfo.Version + ".", ToolTipIcon.Info, "open");
                 else if (!startup) Util.OpenUi();
             });
         });
@@ -811,7 +840,7 @@ class TrayApp : ApplicationContext
         if (code == 2)
         {
             Status("Port " + Util.WebPort() + " in use", 0);
-            Balloon("Meme Mixer couldn't start", "Port " + Util.WebPort() + " is already in use. Close the other copy of Meme Mixer (start.bat?) and choose Exit, then start it again.", ToolTipIcon.Error, "log");
+            Balloon("MemeMixer couldn't start", "Port " + Util.WebPort() + " is already in use. Close the other copy of MemeMixer (start.bat?) and choose Exit, then start it again.", ToolTipIcon.Error, "log");
             return;
         }
         crashes.Add(DateTime.Now);
@@ -819,7 +848,7 @@ class TrayApp : ApplicationContext
         if (crashes.Count >= 4)
         {
             Status("Stopped (error)", 0);
-            Balloon("Meme Mixer stopped", "It keeps stopping. Click to open the log folder (server.log).", ToolTipIcon.Error, "log");
+            Balloon("MemeMixer stopped", "It keeps stopping. Click to open the log folder (server.log).", ToolTipIcon.Error, "log");
             return;
         }
         Status("Restarting…", -1);
@@ -849,7 +878,7 @@ class TrayApp : ApplicationContext
             bool now = !Installer.RunAtStartup;
             Installer.RunAtStartup = now;
             startupItem.Checked = now;
-            Balloon("Meme Mixer", now ? "Meme Mixer will start when you sign in to Windows." : "Meme Mixer won't start with Windows.", ToolTipIcon.Info, null);
+            Balloon("MemeMixer", now ? "MemeMixer will start when you sign in to Windows." : "MemeMixer won't start with Windows.", ToolTipIcon.Info, null);
         }
         catch (Exception ex) { MessageBox.Show("Couldn't change the startup setting: " + ex.Message, Paths.AppName); }
     }
@@ -872,8 +901,8 @@ class TrayApp : ApplicationContext
             quietRestart = true;
             StartServer();
             Balloon(on ? "Demo mode on" : "Demo mode off",
-                on ? "Meme Mixer is using a built-in fake Tesira. Your real settings are kept for when you switch back."
-                   : "Meme Mixer is back on your real Tesira.", ToolTipIcon.Info, "open");
+                on ? "MemeMixer is using a built-in fake Tesira. Your real settings are kept for when you switch back."
+                   : "MemeMixer is back on your real Tesira.", ToolTipIcon.Info, "open");
         }
         catch (Exception ex) { MessageBox.Show("Couldn't switch demo mode: " + ex.Message, Paths.AppName); }
     }
@@ -923,7 +952,7 @@ class TrayApp : ApplicationContext
                     if (userAsked)
                     {
                         string notes = string.IsNullOrEmpty(info.Notes) ? "" : "\n\nWhat's new:\n" + (info.Notes.Length > 900 ? info.Notes.Substring(0, 900) + "…" : info.Notes);
-                        if (MessageBox.Show("Meme Mixer " + info.Tag + " is available (you have " + BuildInfo.Version + ")." + notes + "\n\nInstall it now? Meme Mixer will restart.",
+                        if (MessageBox.Show("MemeMixer " + info.Tag + " is available (you have " + BuildInfo.Version + ")." + notes + "\n\nInstall it now? MemeMixer will restart.",
                                 Paths.AppName, MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
                             InstallUpdate(info);
                     }
@@ -931,7 +960,7 @@ class TrayApp : ApplicationContext
                     else if (notifiedVersion != info.Tag)
                     {
                         notifiedVersion = info.Tag;
-                        Balloon("Meme Mixer update available", "Version " + info.Tag + " is ready. Click here to install it.", ToolTipIcon.Info, "update");
+                        Balloon("MemeMixer update available", "Version " + info.Tag + " is ready. Click here to install it.", ToolTipIcon.Info, "update");
                     }
                 }
                 else if (userAsked)

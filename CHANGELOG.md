@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 (2026-11-20)
+
+### Changed
+- **Renamed to MemeMixer** (one word) everywhere: the tray icon, menus, Start Menu and Desktop shortcuts, the startup entry, Apps & Features, and the web page. Updating renames the old "Meme Mixer" shortcuts and the startup entry automatically.
+- **Tray icon:** just the logo now, without the dark square behind it.
+
 ## 1.1.0 (2026-11-20)
 
 ### Added

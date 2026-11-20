@@ -1,4 +1,4 @@
-# Meme Mixer
+# MemeMixer
 
 Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) over Telnet.
 
@@ -6,20 +6,20 @@ Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) ove
 
 1. Download **MemeMixer.exe** from the latest GitHub release and run it.
    Windows may show "Windows protected your PC" because the exe isn't code-signed. Click **More info → Run anyway**.
-2. On the first run Meme Mixer:
+2. On the first run MemeMixer:
    - installs itself into `%LOCALAPPDATA%\MemeMixer` (no admin rights needed),
    - downloads Node.js (the current LTS, checked against nodejs.org's checksums),
    - adds Start Menu and Desktop shortcuts, an Apps & Features entry, and turns on **Run when Windows starts**,
    - asks for admin permission once, to let phones on your network through the firewall. You can decline; then only this PC can open it,
    - opens the mixer in your browser.
 3. After that it runs in the taskbar tray (bottom-right, by the clock). Right-click the icon for:
-   - **Open Meme Mixer** (double-clicking the icon does the same),
+   - **Open MemeMixer** (double-clicking the icon does the same),
    - **Demo mode (no Tesira needed)**: switches to a built-in fake Tesira so you can try everything without hardware. Demo settings and scenes are separate from your real ones. The same switch is in **Settings → Demo mode**,
    - **Run when Windows starts** (on/off),
    - **Check for updates**: if a newer release is on GitHub, it downloads it, installs it and restarts by itself. It also checks on its own every 12 hours and pops up a notice you can click to install,
    - **Open log folder**, and **Exit**.
 
-Settings and scenes are kept in `%LOCALAPPDATA%\MemeMixer\data` and survive updates. To uninstall, go to **Settings → Apps → Meme Mixer → Uninstall**.
+Settings and scenes are kept in `%LOCALAPPDATA%\MemeMixer\data` and survive updates. To uninstall, go to **Settings → Apps → MemeMixer → Uninstall**.
 
 ### Publishing an update
 1. Raise the number in `VERSION` (e.g. `1.0.0` → `1.0.1`) and note the changes in `CHANGELOG.md`.
@@ -74,7 +74,7 @@ The app listens on your network, so phones and tablets on the same network can u
 Windows has to let the connection through, which you only need to set up once:
 - Either click **Allow** on **Private networks** when Windows Firewall asks the first time the app starts,
 - or run this in an **administrator** PowerShell:
-  `New-NetFirewallRule -DisplayName "Meme Mixer" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private`
+  `New-NetFirewallRule -DisplayName "MemeMixer" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private`
 
 If one browser on the phone says "This site can't be reached" but another browser works, the phone is blocking that browser from the local network. Allow it in the phone's settings:
 - **Android:** Settings → Apps → Chrome (or the browser you use) → Permissions → **Nearby devices** / **Local network**. Then close the browser fully and reopen it.

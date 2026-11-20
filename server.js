@@ -1,4 +1,4 @@
-// Meme Mixer — local web server.
+// MemeMixer — local web server.
 // Holds one TTP connection to the Tesira, keeps a live state cache via
 // subscriptions, and serves the browser UI (Server-Sent Events + JSON POSTs).
 const http = require('http');
@@ -441,11 +441,11 @@ function networkUrls() {
 }
 
 server.on('error', (e) => {
-  console.error(e.code === 'EADDRINUSE' ? `Port ${webPort} is already in use (is Meme Mixer already running?)` : `Web server error: ${e.message}`);
+  console.error(e.code === 'EADDRINUSE' ? `Port ${webPort} is already in use (is MemeMixer already running?)` : `Web server error: ${e.message}`);
   process.exit(2);
 });
 server.listen(webPort, webHost, () => {
-  console.log(`Meme Mixer ${VERSION} running at http://localhost:${webPort}`);
+  console.log(`MemeMixer ${VERSION} running at http://localhost:${webPort}`);
   for (const u of networkUrls()) console.log(`  On your phone (same Wi-Fi/network): ${u}`);
   console.log(DEMO ? 'Demo mode: using a built-in fake Tesira' : `Tesira target ${config.tesira.host}:${config.tesira.port} (change in Settings)`);
 });

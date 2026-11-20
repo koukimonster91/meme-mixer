@@ -39,7 +39,7 @@ static class BuildInfo
 }
 "@ | Set-Content (Join-Path $build 'BuildInfo.cs') -Encoding UTF8
 
-# 3. Icon: the logo on a dark rounded tile, in several sizes (PNG-compressed .ico)
+# 3. Icon: the logo on a transparent background, in several sizes (PNG-compressed .ico)
 Add-Type -AssemblyName System.Drawing
 $logo = [System.Drawing.Image]::FromFile((Join-Path $root 'MM26_Logo_for_Tesira.png'))
 $sizes = 16, 24, 32, 48, 64, 128, 256
@@ -47,12 +47,8 @@ $pngs = foreach ($s in $sizes) {
   $bmp = New-Object System.Drawing.Bitmap $s, $s
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.SmoothingMode = 'AntiAlias'; $g.InterpolationMode = 'HighQualityBicubic'; $g.PixelOffsetMode = 'HighQuality'
-  $r = [Math]::Max(2, [int]($s * 0.22))
-  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $path.AddArc(0, 0, 2 * $r, 2 * $r, 180, 90); $path.AddArc($s - 2 * $r - 1, 0, 2 * $r, 2 * $r, 270, 90)
-  $path.AddArc($s - 2 * $r - 1, $s - 2 * $r - 1, 2 * $r, 2 * $r, 0, 90); $path.AddArc(0, $s - 2 * $r - 1, 2 * $r, 2 * $r, 90, 90); $path.CloseFigure()
-  $g.FillPath((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 21, 25, 34))), $path)
-  $pad = if ($s -le 24) { [int]($s * 0.06) } else { [int]($s * 0.1) }
+  # Just the logo on a transparent background, as large as it fits.
+  $pad = if ($s -le 32) { 0 } else { [int]($s * 0.03) }
   $h = $s - 2 * $pad; $w = [int]($h * $logo.Width / $logo.Height)
   $g.DrawImage($logo, [int](($s - $w) / 2), $pad, $w, $h)
   $g.Dispose()

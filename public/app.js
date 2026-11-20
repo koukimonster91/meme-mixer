@@ -1,5 +1,5 @@
 'use strict';
-// Meme Mixer — browser UI. Talks to server.js: GET /api/state, SSE /events, POST /api/*.
+// MemeMixer — browser UI. Talks to server.js: GET /api/state, SSE /events, POST /api/*.
 
 // ------------------------------------------------------------------ helpers
 const $ = (s, el = document) => el.querySelector(s);
@@ -858,7 +858,7 @@ function renderExtras() {
 
 // --- settings page
 function renderSettings() {
-  $('#pageSub').textContent = `Connection and instance tags${S.version && S.version !== 'dev' ? ` · Meme Mixer v${S.version}` : ''}`;
+  $('#pageSub').textContent = `Connection and instance tags${S.version && S.version !== 'dev' ? ` · MemeMixer v${S.version}` : ''}`;
   const c = S.config;
   const host = h('input', { class: 'input mono', value: c.tesira.host });
   const port = h('input', { class: 'input mono', value: c.tesira.port, style: { maxWidth: '110px' } });
@@ -936,8 +936,8 @@ function renderSettings() {
       h('div', { class: 'row', style: { marginTop: '16px' } }, h('button', { class: 'btn primary', onclick: save }, 'Save tags'))),
     h('div', { class: 'card' }, h('h2', {}, 'Demo mode'),
       h('p', { class: 'hint' }, S.demo
-        ? 'On: Meme Mixer is using a built-in fake Tesira with moving meters, so you can try everything without hardware. Demo settings and scenes are separate; your real ones are kept for when you switch back.'
-        : 'Try Meme Mixer without a Tesira. It switches to a built-in fake one, with its own settings and scenes. Your real setup is kept.'),
+        ? 'On: MemeMixer is using a built-in fake Tesira with moving meters, so you can try everything without hardware. Demo settings and scenes are separate; your real ones are kept for when you switch back.'
+        : 'Try MemeMixer without a Tesira. It switches to a built-in fake one, with its own settings and scenes. Your real setup is kept.'),
       S.canSwitchDemo
         ? h('div', { class: 'row' }, (() => {
             const t = Toggle('Demo mode', () => S.demo, async (v) => {
