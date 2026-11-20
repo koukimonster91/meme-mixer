@@ -13,8 +13,11 @@ const ROOT = __dirname;
 // them outside the program folder so updates never overwrite them.
 const DATA = process.env.MIXER_DATA || ROOT;
 try { fs.mkdirSync(DATA, { recursive: true }); } catch {}
-const CONFIG_PATH = path.join(DATA, process.env.MIXER_CONFIG || 'config.json');
-const SNAP_PATH = path.join(DATA, process.env.MIXER_CONFIG ? 'snapshots.demo.json' : 'snapshots.json');
+// MIXER_DEMO=1: run a built-in fake Tesira and keep demo settings/scenes apart from the real ones.
+const DEMO = process.env.MIXER_DEMO === '1';
+const TRAY = process.env.MIXER_TRAY === '1'; // started by the Windows tray app
+const CONFIG_PATH = path.join(DATA, process.env.MIXER_CONFIG || (DEMO ? 'config.demo.json' : 'config.json'));
+const SNAP_PATH = path.join(DATA, process.env.MIXER_CONFIG || DEMO ? 'snapshots.demo.json' : 'snapshots.json');
 const VERSION = (() => { try { return fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim(); } catch { return 'dev'; } })();
 const PUBLIC = path.join(ROOT, 'public');
 
@@ -87,6 +90,10 @@ function loadSnapshots() { try { return JSON.parse(fs.readFileSync(SNAP_PATH, 'u
 function saveSnapshots() { fs.writeFileSync(SNAP_PATH, JSON.stringify(snapshots, null, 2)); }
 
 let config = loadConfig();
+if (DEMO) {
+  // Demo uses the same web address as the real setup, so links and phone bookmarks keep working.
+  try { config.web = { ...config.web, ...JSON.parse(fs.readFileSync(path.join(DATA, 'config.json'), 'utf8')).web }; } catch {}
+}
 let snapshots = loadSnapshots();
 
 // ---------------------------------------------------------------- state
@@ -344,7 +351,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (p === '/api/state' && req.method === 'GET') {
-    return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION });
+    return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION, demo: DEMO, canSwitchDemo: TRAY });
   }
   if (req.method === 'POST') {
     const b = await body(req);
@@ -363,6 +370,17 @@ const server = http.createServer(async (req, res) => {
       case '/api/reconnect':
         connect();
         return json(res, { ok: true });
+      case '/api/demo': {
+        // Only when run by the tray app, which restarts the server on exit code 3.
+        if (!TRAY) return json(res, { ok: false, raw: 'demo mode can only be switched in the installed app' });
+        const flag = path.join(DATA, 'demo-mode');
+        if (b.on) fs.writeFileSync(flag, 'Delete this file (or untick Demo mode) to use the real Tesira.');
+        else { try { fs.unlinkSync(flag); } catch {} }
+        json(res, { ok: true });
+        broadcast('restarting', { demo: !!b.on });
+        setTimeout(() => process.exit(3), 300);
+        return;
+      }
       case '/api/scan':
         return json(res, await runScan('requested'));
       case '/api/raw': {
@@ -429,6 +447,12 @@ server.on('error', (e) => {
 server.listen(webPort, webHost, () => {
   console.log(`Meme Mixer ${VERSION} running at http://localhost:${webPort}`);
   for (const u of networkUrls()) console.log(`  On your phone (same Wi-Fi/network): ${u}`);
-  console.log(`Tesira target ${config.tesira.host}:${config.tesira.port} (change in Settings)`);
+  console.log(DEMO ? 'Demo mode: using a built-in fake Tesira' : `Tesira target ${config.tesira.host}:${config.tesira.port} (change in Settings)`);
 });
-connect();
+if (DEMO) {
+  require('./mock-tesira').start(0).then((port) => {
+    config.tesira = { ...config.tesira, host: '127.0.0.1', port, autoConnect: false };
+    addLog('demo mode: connected to the built-in fake Tesira (no hardware needed)');
+    connect();
+  }).catch((e) => { console.error(`Demo Tesira failed to start: ${e.message}`); connect(); });
+} else connect();

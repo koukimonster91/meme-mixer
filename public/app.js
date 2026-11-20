@@ -934,6 +934,21 @@ function renderSettings() {
       ...masters.map((t) => h('div', { class: 'row' }, field(t))),
       ...masterMeters.map((t) => h('div', { class: 'row' }, field(t))),
       h('div', { class: 'row', style: { marginTop: '16px' } }, h('button', { class: 'btn primary', onclick: save }, 'Save tags'))),
+    h('div', { class: 'card' }, h('h2', {}, 'Demo mode'),
+      h('p', { class: 'hint' }, S.demo
+        ? 'On: Meme Mixer is using a built-in fake Tesira with moving meters, so you can try everything without hardware. Demo settings and scenes are separate; your real ones are kept for when you switch back.'
+        : 'Try Meme Mixer without a Tesira. It switches to a built-in fake one, with its own settings and scenes. Your real setup is kept.'),
+      S.canSwitchDemo
+        ? h('div', { class: 'row' }, (() => {
+            const t = Toggle('Demo mode', () => S.demo, async (v) => {
+              t.el.querySelector('input').disabled = true;
+              toast(v ? 'Switching to demo mode…' : 'Switching to your real Tesira…');
+              await post('/api/demo', { on: v });
+            }, 'warn');
+            t.update();
+            return t.el;
+          })())
+        : h('p', { class: 'hint', style: { marginBottom: 0 } }, S.demo ? 'Started with start-demo.bat. Close it and use start.bat for the real Tesira.' : 'Available in the installed app (MemeMixer.exe). From source, run start-demo.bat.')),
     h('div', { class: 'card' }, h('h2', {}, 'Phone & tablet access'),
       S.networkUrls.length
         ? [h('p', { class: 'hint' }, 'On a phone or tablet on the same Wi-Fi / network, scan the QR code with the camera or open this address in the browser:'),
@@ -951,7 +966,7 @@ function updateBanner() {
   const s = S.status;
   const conn = $('#conn');
   conn.className = `conn ${s.ready ? 'ready' : s.connected ? 'connecting' : ''}`;
-  $('.conn-text', conn).textContent = s.ready ? `${s.host}:${s.port}` : s.connected ? 'Connecting…' : `Offline · ${s.host}`;
+  $('.conn-text', conn).textContent = s.ready ? (S.demo ? 'Demo mode' : `${s.host}:${s.port}`) : s.connected ? 'Connecting…' : `Offline · ${s.host}`;
   const b = $('#banner');
   const onSettings = location.hash === '#settings';
   b.hidden = !!s.ready || onSettings;
@@ -963,7 +978,11 @@ function updateBanner() {
 async function load() {
   const r = await fetch('/api/state').then((x) => x.json());
   S.config = r.config; S.state = r.state; S.status = r.status; S.aliases = r.aliases; S.snapshots = r.snapshots; S.log = r.log; S.networkUrls = r.networkUrls || []; S.scan = r.scan || S.scan; S.version = r.version;
+  S.demo = !!r.demo; S.canSwitchDemo = !!r.canSwitchDemo;
+  document.body.classList.toggle('demo', S.demo);
+  $('#brandSub').textContent = S.demo ? 'Demo mode · fake Tesira' : 'Tesira headphone mix';
   renderPage();
+  updateBanner();
 }
 
 function connectEvents() {
@@ -980,7 +999,8 @@ function connectEvents() {
     if (!active || !active.matches('input, select')) renderPage();
     else for (const c of comps) c.presets && c.presets();
   });
-  es.addEventListener('scan', (e) => { S.scan = JSON.parse(e.data); for (const c of comps) c.scan && c.scan(); });
+  es.addEventListener('restarting', (e) => { const d = JSON.parse(e.data); toast(d.demo ? 'Switching to demo mode…' : 'Switching to your real Tesira…'); });
+  es.addEventListener('scan',(e) => { S.scan = JSON.parse(e.data); for (const c of comps) c.scan && c.scan(); });
   es.addEventListener('snapshots',(e) => { S.snapshots = JSON.parse(e.data); for (const c of comps) c.snaps && c.snaps(); });
   es.addEventListener('log', (e) => { const line = JSON.parse(e.data); S.log.push(line); for (const c of comps) c.log && c.log(line); });
   es.onerror = () => { S.status = { ...S.status, ready: false, connected: false }; updateBanner(); };

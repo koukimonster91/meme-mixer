@@ -56,6 +56,9 @@ button { cursor: pointer; }
 }
 .brand-name { font-weight: 700; letter-spacing: -0.01em; font-size: 15px; }
 .brand-sub { color: var(--muted); font-size: 12px; }
+body.demo .brand-sub { color: #ffb547; font-weight: 600; }
+body.demo .conn .dot { background: #ffb547; box-shadow: 0 0 10px rgba(255, 181, 71, 0.7); }
+body.demo .conn-text { color: #ffb547; }
 
 .nav-group { margin-top: 10px; }
 .nav-label {

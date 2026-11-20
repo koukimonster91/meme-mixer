@@ -147,7 +147,10 @@ function handle(c, line) {
   out('-ERR unknown command');
 }
 
-net.createServer((sock) => {
+// Start the fake Tesira. Port 0 picks a free port. Resolves with the port used.
+function start(port = PORT) {
+  return new Promise((resolve, reject) => {
+  const srv = net.createServer((sock) => {
   const c = { sock, subs: [], buf: '' };
   clients.add(c);
   sock.write(Buffer.from([255, 253, 24, 255, 253, 32, 255, 253, 35, 255, 253, 39]));
@@ -165,4 +168,11 @@ net.createServer((sock) => {
   const end = () => { for (const s of c.subs) clearInterval(s.timer); clients.delete(c); };
   sock.on('close', end);
   sock.on('error', end);
-}).listen(PORT, '127.0.0.1', () => console.log(`Mock Tesira listening on 127.0.0.1:${PORT}`));
+});
+  srv.on('error', reject);
+  srv.listen(port, '127.0.0.1', () => resolve(srv.address().port));
+  });
+}
+
+module.exports = { start };
+if (require.main === module) start().then((p) => console.log(`Mock Tesira listening on 127.0.0.1:${p}`));

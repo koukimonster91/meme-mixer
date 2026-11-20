@@ -14,6 +14,7 @@ Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) ove
    - opens the mixer in your browser.
 3. After that it runs in the taskbar tray (bottom-right, by the clock). Right-click the icon for:
    - **Open Meme Mixer** (double-clicking the icon does the same),
+   - **Demo mode (no Tesira needed)**: switches to a built-in fake Tesira so you can try everything without hardware. Demo settings and scenes are separate from your real ones. The same switch is in **Settings → Demo mode**,
    - **Run when Windows starts** (on/off),
    - **Check for updates**: if a newer release is on GitHub, it downloads it, installs it and restarts by itself. It also checks on its own every 12 hours and pops up a notice you can click to install,
    - **Open log folder**, and **Exit**.

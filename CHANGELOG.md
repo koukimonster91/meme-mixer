@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 (2026-11-20)
+
+### Added
+- **Demo mode:** try Meme Mixer without a Tesira. Switch it on from the tray menu (**Demo mode (no Tesira needed)**) or in **Settings → Demo mode**, which also works from a phone. Meme Mixer then uses a built-in fake Tesira with moving meters. Demo settings and scenes are kept separate, so your real setup is untouched when you switch back. While it's on, the sidebar and connection badge show "Demo mode" in amber.
+
 ## 1.0.0 (2026-11-20)
 
 ### Added

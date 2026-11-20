@@ -40,6 +40,7 @@ static class Paths
     public static readonly string DataDir = Path.Combine(Home, "data");
     public static readonly string ServerLog = Path.Combine(DataDir, "server.log");
     public static readonly string TrayLog = Path.Combine(DataDir, "tray.log");
+    public static readonly string DemoFlag = Path.Combine(DataDir, "demo-mode");
     public static readonly string ApiBase = Env("MEMEMIXER_API", "https://api.github.com").TrimEnd('/');
     public static readonly string NodeDist = Env("MEMEMIXER_NODE_DIST", "https://nodejs.org/dist").TrimEnd('/');
     public const string MutexName = "Local\\MemeMixer.Tray";
@@ -469,8 +470,9 @@ class TrayApp : ApplicationContext
 {
     readonly NotifyIcon tray = new NotifyIcon();
     readonly Control ui = new Control();
-    readonly ToolStripMenuItem openItem, startupItem, updateItem, statusItem;
+    readonly ToolStripMenuItem openItem, startupItem, updateItem, statusItem, demoItem;
     readonly bool firstRun, updated, startup;
+    bool quietRestart;
     SetupForm setupForm;
     Process server;
     bool stopping, busy;
@@ -493,8 +495,10 @@ class TrayApp : ApplicationContext
         startupItem = new ToolStripMenuItem("Run when Windows starts", null, delegate { ToggleStartup(); });
         updateItem = new ToolStripMenuItem("Check for updates", null, delegate { UpdateClicked(); });
         statusItem = new ToolStripMenuItem("Starting…") { Enabled = false };
+        demoItem = new ToolStripMenuItem("Demo mode (no Tesira needed)", null, delegate { ToggleDemo(); });
         menu.Items.Add(openItem);
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(demoItem);
         menu.Items.Add(startupItem);
         menu.Items.Add(updateItem);
         menu.Items.Add(new ToolStripMenuItem("Open log folder", null, delegate { try { Process.Start(Paths.DataDir); } catch { } }));
@@ -503,7 +507,7 @@ class TrayApp : ApplicationContext
         menu.Items.Add(new ToolStripMenuItem("Version " + BuildInfo.Version) { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Exit", null, delegate { ExitApp(); }));
-        menu.Opening += delegate { try { startupItem.Checked = Installer.RunAtStartup; } catch { } };
+        menu.Opening += delegate { try { startupItem.Checked = Installer.RunAtStartup; } catch { } demoItem.Checked = DemoOn; };
 
         try { tray.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { tray.Icon = SystemIcons.Application; }
         tray.Text = "Meme Mixer";
@@ -727,6 +731,8 @@ class TrayApp : ApplicationContext
             psi.RedirectStandardOutput = true;
             psi.RedirectStandardError = true;
             psi.EnvironmentVariables["MIXER_DATA"] = Paths.DataDir;
+            psi.EnvironmentVariables["MIXER_DEMO"] = DemoOn ? "1" : "0";
+            psi.EnvironmentVariables["MIXER_TRAY"] = "1";
             Process p = new Process();
             p.StartInfo = psi;
             p.EnableRaisingEvents = true;
@@ -772,7 +778,8 @@ class TrayApp : ApplicationContext
             {
                 if (setupForm != null && !setupForm.IsDisposed) { setupForm.Close(); setupForm = null; }
                 if (!ok) return; // ServerExited reports the problem
-                Status("Running at " + Util.UiUrl(), -1);
+                Status((DemoOn ? "Demo mode at " : "Running at ") + Util.UiUrl(), -1);
+                if (quietRestart) { quietRestart = false; return; }
                 if (firstRun)
                 {
                     Balloon("Meme Mixer is running", "It lives here in the taskbar tray. Right-click the icon to open it, set it to start with Windows, or check for updates.", ToolTipIcon.Info, "open");
@@ -794,6 +801,13 @@ class TrayApp : ApplicationContext
         Paths.Log("server exited with code " + code);
         server = null;
         if (setupForm != null && !setupForm.IsDisposed) { setupForm.Close(); setupForm = null; }
+        if (code == 3) // the web page switched demo mode: restart straight away
+        {
+            Paths.Log("demo mode " + (DemoOn ? "on" : "off") + " (from the web page)");
+            quietRestart = true;
+            StartServer();
+            return;
+        }
         if (code == 2)
         {
             Status("Port " + Util.WebPort() + " in use", 0);
@@ -838,6 +852,30 @@ class TrayApp : ApplicationContext
             Balloon("Meme Mixer", now ? "Meme Mixer will start when you sign in to Windows." : "Meme Mixer won't start with Windows.", ToolTipIcon.Info, null);
         }
         catch (Exception ex) { MessageBox.Show("Couldn't change the startup setting: " + ex.Message, Paths.AppName); }
+    }
+
+    static bool DemoOn { get { return File.Exists(Paths.DemoFlag); } }
+
+    // Demo mode runs a built-in fake Tesira, with its own settings and scenes, so the
+    // mixer can be tried without hardware. Switching restarts the server; open pages reconnect.
+    void ToggleDemo()
+    {
+        if (busy) return;
+        try
+        {
+            bool on = !DemoOn;
+            if (on) File.WriteAllText(Paths.DemoFlag, "Delete this file (or untick Demo mode in the tray menu) to use the real Tesira.");
+            else File.Delete(Paths.DemoFlag);
+            demoItem.Checked = on;
+            Paths.Log("demo mode " + (on ? "on" : "off"));
+            StopServer();
+            quietRestart = true;
+            StartServer();
+            Balloon(on ? "Demo mode on" : "Demo mode off",
+                on ? "Meme Mixer is using a built-in fake Tesira. Your real settings are kept for when you switch back."
+                   : "Meme Mixer is back on your real Tesira.", ToolTipIcon.Info, "open");
+        }
+        catch (Exception ex) { MessageBox.Show("Couldn't switch demo mode: " + ex.Message, Paths.AppName); }
     }
 
     void ExitApp()
