@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meme Mixer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta name="theme-color" content="#090b10">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Meme Mixer">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <img class="logo" src="logo.png" alt="Meme Mixer logo">
+        <div>
+          <div class="brand-name">Meme Mixer</div>
+          <div class="brand-sub" id="brandSub">Tesira headphone mix</div>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="conn" id="conn"><span class="dot"></span><span class="conn-text">Connecting…</span></div>
+    </aside>
+    <main class="main">
+      <header class="page-head">
+        <div>
+          <h1 id="pageTitle"></h1>
+          <div class="page-sub" id="pageSub"></div>
+        </div>
+        <div class="head-actions" id="headActions"></div>
+      </header>
+      <div class="banner" id="banner" hidden></div>
+      <section class="page" id="page"></section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="qr.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

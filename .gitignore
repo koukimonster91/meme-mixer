@@ -1,0 +1,7 @@
+# user settings and scenes (may contain your network addresses)
+config.json
+snapshots.json
+snapshots.demo.json
+# build output
+build/
+dist/

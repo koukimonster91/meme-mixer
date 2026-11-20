@@ -1,0 +1,231 @@
+{
+  "tesira": {
+    "host": "127.0.0.1",
+    "port": 2323,
+    "autoConnect": true
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8081
+  },
+  "tags": {
+    "mixer": "Mixer1",
+    "inputMaster": "Level1",
+    "inputMeter": "AudioMeter2",
+    "noiseGate": "NoiseGate1",
+    "aecInput": "AecInput1",
+    "masters": [
+      "Level2",
+      "Level3",
+      "Level4",
+      "Level5",
+      "Level6"
+    ],
+    "masterMeters": [
+      "AudioMeter3",
+      "AudioMeter4",
+      "AudioMeter5",
+      "AudioMeter6",
+      "AudioMeter7"
+    ]
+  },
+  "sources": [
+    {
+      "name": "Mic 1",
+      "inputs": [
+        1
+      ],
+      "meter": [
+        1
+      ]
+    },
+    {
+      "name": "Mic 2",
+      "inputs": [
+        2
+      ],
+      "meter": [
+        2
+      ]
+    },
+    {
+      "name": "Mic 3",
+      "inputs": [
+        3
+      ],
+      "meter": [
+        3
+      ]
+    },
+    {
+      "name": "Mic 4",
+      "inputs": [
+        4
+      ],
+      "meter": [
+        4
+      ]
+    },
+    {
+      "name": "TV/AUX",
+      "inputs": [
+        5,
+        6
+      ],
+      "meter": [
+        5,
+        6
+      ]
+    },
+    {
+      "name": "PC",
+      "inputs": [
+        7,
+        8
+      ],
+      "meter": [
+        7,
+        8
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Headphone 1",
+      "mixerOutputs": [
+        1,
+        2
+      ],
+      "master": 0,
+      "sources": [
+        "Mic 1",
+        "Mic 2",
+        "Mic 3",
+        "Mic 4",
+        "TV/AUX",
+        "PC"
+      ]
+    },
+    {
+      "name": "Headphone 2",
+      "mixerOutputs": [
+        3,
+        4
+      ],
+      "master": 1,
+      "sources": [
+        "Mic 1",
+        "Mic 2",
+        "Mic 3",
+        "Mic 4",
+        "TV/AUX",
+        "PC"
+      ]
+    },
+    {
+      "name": "Headphone 3",
+      "mixerOutputs": [
+        5,
+        6
+      ],
+      "master": 2,
+      "sources": [
+        "Mic 1",
+        "Mic 2",
+        "Mic 3",
+        "Mic 4",
+        "TV/AUX",
+        "PC"
+      ]
+    },
+    {
+      "name": "Headphone 4",
+      "mixerOutputs": [
+        7,
+        8
+      ],
+      "master": 3,
+      "sources": [
+        "Mic 1",
+        "Mic 2",
+        "Mic 3",
+        "Mic 4",
+        "TV/AUX",
+        "PC"
+      ]
+    },
+    {
+      "name": "USB Out",
+      "mixerOutputs": [
+        9,
+        10
+      ],
+      "master": 4,
+      "sources": [
+        "Mic 1",
+        "Mic 2",
+        "Mic 3",
+        "Mic 4",
+        "TV/AUX"
+      ]
+    }
+  ],
+  "inputChannels": [
+    {
+      "name": "Mic 1",
+      "channel": 1,
+      "meter": 1
+    },
+    {
+      "name": "Mic 2",
+      "channel": 2,
+      "meter": 2
+    },
+    {
+      "name": "Mic 3",
+      "channel": 3,
+      "meter": 3
+    },
+    {
+      "name": "Mic 4",
+      "channel": 4,
+      "meter": 4
+    },
+    {
+      "name": "TV/AUX L",
+      "channel": 5,
+      "meter": 5,
+      "link": 6
+    },
+    {
+      "name": "TV/AUX R",
+      "channel": 6,
+      "meter": 6,
+      "link": 5
+    },
+    {
+      "name": "PC L",
+      "channel": 7,
+      "meter": 7,
+      "link": 8
+    },
+    {
+      "name": "PC R",
+      "channel": 8,
+      "meter": 8,
+      "link": 7
+    }
+  ],
+  "noiseGateChannels": [
+    "Gate 1",
+    "Gate 2"
+  ],
+  "aecChannels": 12,
+  "meter": {
+    "min": -60,
+    "max": 24,
+    "yellow": 0,
+    "red": 18
+  },
+  "presets": []
+}
