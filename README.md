@@ -26,7 +26,7 @@ Settings and scenes are kept in `%LOCALAPPDATA%\MemeMixer\data` and survive upda
 MemeMixer comes with a Stream Deck plugin, made for the 15-key Stream Deck.
 1. Install the Elgato Stream Deck app.
 2. Right-click the MemeMixer tray icon → **Install Stream Deck plugin**. You can also download it from MemeMixer's **Stream Deck** page and double-click the file.
-3. In the Stream Deck app, drag **MemeMixer → MemeMixer Key** onto all 15 keys. A new profile for it is a good idea.
+3. The plugin adds a ready-made **MemeMixer** profile with all 15 keys set up. On your usual profile, drag **MemeMixer → Open MemeMixer** onto a key to jump into it. An X key (set up in MemeMixer) jumps back. If you made your own MemeMixer profile before 1.4.0, delete it in the Stream Deck app to avoid having two.
 
 Every key is then set up in MemeMixer on the **Stream Deck** page:
 - **Mute on/off:** sources in a mix, mix masters, all sources in a mix, Input Master channels, a source in every mix, or all outputs.

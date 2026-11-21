@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0 (2026-11-21)
+
+### Fixed
+- **The X (Exit) key didn't change profile.** Stream Deck only lets a plugin switch away from a profile that comes with the plugin. The plugin now includes a ready-made **MemeMixer** profile, with all 15 keys set up, that Stream Deck adds when the plugin is installed.
+
+### Added
+- **Open MemeMixer** Stream Deck action: put it on your usual profile to jump into the MemeMixer profile. The X key jumps back.
+- No more dragging the action onto 15 keys: the bundled profile already has them.
+
 ## 1.3.0 (2026-11-21)
 
 ### Added

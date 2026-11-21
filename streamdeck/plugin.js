@@ -16,6 +16,8 @@ const SD_PORT = Number(args.port);
 const PLUGIN_UUID = args.pluginUUID;
 const REGISTER_EVENT = args.registerEvent || 'registerPlugin';
 const COLS = 5, ROWS = 3;
+const OPEN_ACTION = 'com.mememixer.deck.open';
+const PROFILE_NAME = 'MemeMixer'; // bundled profile, listed in manifest.json "Profiles"
 
 const log = (...a) => { try { console.log(new Date().toISOString(), ...a); } catch {} };
 
@@ -91,6 +93,13 @@ const sdSend = (event, context, payload) => { if (sd) sd.send(JSON.stringify(Obj
 const keys = new Map();     // context -> { device, col, row, img }
 const pageOf = new Map();   // device -> page index
 const held = new Map();     // context -> repeat timers
+
+// profile null = back to the previous profile
+function switchProfile(device, profile) {
+  if (!sd) return;
+  sd.send(JSON.stringify({ event: 'switchToProfile', context: PLUGIN_UUID, device, payload: profile ? { profile } : {} }));
+  log('switchToProfile', device, profile || '(previous)');
+}
 
 function keyIndex(k) { return k.col < COLS && k.row < ROWS ? k.row * COLS + k.col : -1; }
 
@@ -180,9 +189,9 @@ async function keyDown(context) {
     return;
   }
   if (v.type === 'profile') {
-    // With no profile name, Stream Deck goes back to the previous profile. (Plugins can't
-    // open user-made profiles by name; only profiles bundled with the plugin.)
-    if (sd) sd.send(JSON.stringify({ event: 'switchToProfile', context: PLUGIN_UUID, device: dev, payload: {} }));
+    // With no profile name, Stream Deck goes back to the previous profile. That only works
+    // from the MemeMixer profile bundled with this plugin (opened with "Open MemeMixer").
+    switchProfile(dev, null);
     return;
   }
   if (v.type === 'pagename') return;
@@ -214,7 +223,12 @@ function stopRepeat(context) {
 function onSdMessage(msg) {
   let m;
   try { m = JSON.parse(msg); } catch { return; }
-  const { event, context, device, payload } = m;
+  const { event, context, device, payload, action } = m;
+  // "Open MemeMixer" sits on the user's own profile and only switches to the bundled profile.
+  if (action === OPEN_ACTION) {
+    if (event === 'keyDown') switchProfile(device, PROFILE_NAME);
+    return;
+  }
   switch (event) {
     case 'willAppear': {
       if (payload && payload.isInMultiAction) return;

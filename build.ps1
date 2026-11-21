@@ -51,7 +51,9 @@ Copy-Item (Join-Path $root 'public\deck-render.js') (Join-Path $sdp 'bin\deck-re
 '{ "type": "commonjs" }' | Set-Content (Join-Path $sdp 'bin\package.json') -Encoding ascii
 (Get-Content (Join-Path $root 'streamdeck\manifest.json') -Raw).Replace('"Version": "0.0.0.0"', "`"Version`": `"$version.0`"") |
   Set-Content (Join-Path $sdp 'manifest.json') -Encoding UTF8
-foreach ($spec in @(@('plugin', 256, $false), @('category', 28, $false), @('action', 20, $false), @('key', 72, $true))) {
+# The MemeMixer profile (all 15 keys are MemeMixer Keys) that Stream Deck installs with the plugin.
+Copy-Item (Join-Path $root 'streamdeck\MemeMixer.streamDeckProfile') (Join-Path $sdp 'MemeMixer.streamDeckProfile')
+foreach ($spec in @(@('plugin', 256, $false), @('category', 28, $false), @('action', 20, $false), @('key', 72, $true), @('open', 72, $true))) {
   Save-LogoPng $spec[1] (Join-Path $sdp "imgs\$($spec[0]).png") $spec[2]
   Save-LogoPng ($spec[1] * 2) (Join-Path $sdp "imgs\$($spec[0])@2x.png") $spec[2]
 }

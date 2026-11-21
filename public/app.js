@@ -1044,7 +1044,7 @@ function renderDeck() {
       kids.push(h('div', { class: 'row' }, field('Goes to', select([['next', 'Next page'], ['prev', 'Previous page'], ...layout.pages.map((p, i) => [i, p.name || `Page ${i + 1}`])], k.to, (v) => setKey(sel, { ...k, to: v === 'next' || v === 'prev' ? v : Number(v) })))));
     }
     if (k && k.type === 'profile') {
-      kids.push(h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Shows an X. Pressing it switches the Stream Deck back to the profile you were using before. Stream Deck only lets plugins go back to the previous profile; they can\'t open your own profiles by name.'));
+      kids.push(h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Shows an X. Pressing it switches the Stream Deck back to the profile you came from. This works in the MemeMixer profile that comes with the plugin, opened with the Open MemeMixer key. Stream Deck doesn\'t let plugins switch away from profiles you made yourself.'));
     }
     if (k && k.type === 'pagename') {
       kids.push(h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Shows the name of the page it\'s on, so you can tell the pages apart. Pressing it does nothing.'));
@@ -1091,8 +1091,9 @@ function renderDeck() {
     h('ol', { class: 'deck-steps' },
       h('li', {}, 'Install the Elgato Stream Deck app if you haven\'t already.'),
       h('li', {}, 'Install the MemeMixer plugin: ', h('a', { href: 'MemeMixer.streamDeckPlugin', download: 'MemeMixer.streamDeckPlugin' }, 'download it'), ' and double-click the file, or right-click the MemeMixer tray icon → Install Stream Deck plugin.'),
-      h('li', {}, 'In the Stream Deck app, find MemeMixer in the action list and drag MemeMixer Key onto all 15 keys. Tip: make a new profile for it.'),
-      h('li', {}, 'That\'s it. Each key shows what you set on this page, and pages are switched with Change page keys.')),
+      h('li', {}, 'The plugin adds a ready-made MemeMixer profile to the Stream Deck app, with all 15 keys set up.'),
+      h('li', {}, 'On your usual profile, drag MemeMixer → Open MemeMixer onto a key. Pressing it opens the MemeMixer profile; an X key on this page brings you back.'),
+      h('li', {}, 'Each key shows what you set on this page. Switch pages with Change page keys.')),
     h('div', { class: 'row' }, status, reset));
 
   // Export / import, to move a layout to another PC.

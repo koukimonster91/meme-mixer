@@ -13,7 +13,19 @@
   "SDKVersion": 2,
   "Software": { "MinimumVersion": "6.5" },
   "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
+  "Profiles": [
+    { "Name": "MemeMixer", "DeviceType": 0, "Readonly": false, "DontAutoSwitchWhenInstalled": true, "AutoInstall": true }
+  ],
   "Actions": [
+    {
+      "UUID": "com.mememixer.deck.open",
+      "Name": "Open MemeMixer",
+      "Icon": "imgs/action",
+      "Tooltip": "Switches to the MemeMixer profile. Put it on your usual profile; the X key in MemeMixer brings you back.",
+      "Controllers": ["Keypad"],
+      "SupportedInMultiActions": false,
+      "States": [{ "Image": "imgs/open", "ShowTitle": false }]
+    },
     {
       "UUID": "com.mememixer.deck.key",
       "Name": "MemeMixer Key",
