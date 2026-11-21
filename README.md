@@ -4,7 +4,7 @@ Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) ove
 
 ## Install (Windows)
 
-1. Download **MemeMixer.exe** from the latest GitHub release and run it.
+1. Download **MemeMixer.exe** from https://updates.sfdgadfgsdfwef.top/mememixer/MemeMixer.exe and run it.
    Windows may show "Windows protected your PC" because the exe isn't code-signed. Click **More info → Run anyway**.
 2. On the first run MemeMixer:
    - installs itself into `%LOCALAPPDATA%\MemeMixer` (no admin rights needed),
@@ -17,7 +17,7 @@ Browser-based mixer for a Biamp Tesira, using the Tesira Text Protocol (TTP) ove
    - **Demo mode (no Tesira needed)**: switches to a built-in fake Tesira so you can try everything without hardware. Demo settings and scenes are separate from your real ones. The same switch is in **Settings → Demo mode**,
    - **Run when Windows starts** (on/off),
    - **Install Stream Deck plugin** (see below),
-   - **Check for updates**: if a newer release is on GitHub, it downloads it, installs it and restarts by itself. It also checks on its own every 12 hours and pops up a notice you can click to install,
+   - **Check for updates**: if a newer version is on the update site, it downloads it, checks its signature, installs it and restarts by itself. It also checks on its own every 12 hours and pops up a notice you can click to install,
    - **Open log folder**, and **Exit**.
 
 Settings and scenes are kept in `%LOCALAPPDATA%\MemeMixer\data` and survive updates. To uninstall, go to **Settings → Apps → MemeMixer → Uninstall**.
@@ -38,10 +38,23 @@ Every key is then set up in MemeMixer on the **Stream Deck** page:
 Changes show up on the Stream Deck within a moment. The plugin finds MemeMixer on this PC by itself. If MemeMixer isn't running, the keys say so.
 
 ### Publishing an update
-1. Raise the number in `VERSION` (e.g. `1.0.0` → `1.0.1`) and note the changes in `CHANGELOG.md`.
-2. Run `.\release.ps1 -Notes "What changed"`. This needs the GitHub CLI signed in (`gh auth login`), and `github-repo.txt` must contain the repository as `owner/name`.
+Updates are hosted on Cloudflare Pages at `https://updates.sfdgadfgsdfwef.top/mememixer/`. That address is in `update-source.txt`. The site's files live in the shared `..\updates-site` folder, one folder per program, and `site.json` there names the Pages project.
 
-`.\build.ps1` on its own builds `dist\MemeMixer.exe` without publishing it.
+Every release is **signed**:
+- `latest.json` carries the version, the notes, and the exe's SHA-256 and size.
+- `latest.json.sig` is its RSA-SHA256 signature.
+- The tray checks that signature with the public key built into it (`update-signing-key.pub.xml`), then checks the download's hash and size.
+- A changed or unsigned update is refused, even if it comes from the real site.
+
+One-time setup on the publishing PC:
+- **Signing key:** `.\new-signing-key.ps1` creates the private key in `%APPDATA%\update-signing\mememixer.xml`. **Back it up.** Without it, installed copies can't be updated any more and need a manual reinstall.
+- **Cloudflare sign-in:** `npx wrangler login` signs Wrangler in to the Cloudflare account.
+
+To release:
+1. Raise the number in `VERSION` and add a `## x.y.z` section to `CHANGELOG.md`. The notes are taken from it.
+2. In **PowerShell 7** (`pwsh`), run `.\release.ps1`. It builds, signs, uploads the whole update site, and checks that the new version is live.
+
+`.\build.ps1` on its own builds `dist\MemeMixer.exe` without publishing it. `.\release.ps1 -SkipDeploy` prepares the site folder without uploading.
 
 ## Run from source
 

@@ -1161,11 +1161,10 @@ function renderDeck() {
   pollStatus();
 }
 
-// The Tesira Designer file, stored in the GitHub project's tesira/ folder.
+// The Tesira Designer file, uploaded to the update site with each release (from tesira/).
 const DESIGN_FILE = {
   name: 'MM26_Tesira_1b.tmf',
-  url: 'https://github.com/koukimonster91/meme-mixer/raw/main/tesira/MM26_Tesira_1b.tmf',
-  folder: 'https://github.com/koukimonster91/meme-mixer/tree/main/tesira',
+  url: 'https://updates.sfdgadfgsdfwef.top/mememixer/MM26_Tesira_1b.tmf',
 };
 
 function renderSettings() {
@@ -1254,10 +1253,9 @@ function renderSettings() {
       ...gateFields.map((t) => h('div', { class: 'row' }, field(t))),
       h('div', { class: 'row', style: { marginTop: '16px' } }, h('button', { class: 'btn primary', onclick: save }, 'Save tags'))),
     h('div', { class: 'card' }, h('h2', {}, 'Tesira design file'),
-      h('p', { class: 'hint' }, 'The Tesira Designer file MemeMixer is set up for. Open it in Tesira Designer to see or load the design. It\'s kept on GitHub, so this link always gets the latest copy.'),
+      h('p', { class: 'hint' }, 'The Tesira Designer file MemeMixer is set up for. Open it in Tesira Designer to see or load the design. This link always gets the copy from the latest release.'),
       h('div', { class: 'row' },
-        h('a', { class: 'btn primary', href: DESIGN_FILE.url, download: DESIGN_FILE.name, target: '_blank', rel: 'noopener' }, `Download ${DESIGN_FILE.name}`),
-        h('a', { class: 'btn', href: DESIGN_FILE.folder, target: '_blank', rel: 'noopener' }, 'All versions on GitHub'))),
+        h('a', { class: 'btn primary', href: DESIGN_FILE.url, download: DESIGN_FILE.name, target: '_blank', rel: 'noopener' }, `Download ${DESIGN_FILE.name}`))),
     h('div', { class: 'card' }, h('h2', {}, 'Demo mode'),
       h('p', { class: 'hint' }, S.demo
         ? 'On: MemeMixer is using a built-in fake Tesira with moving meters, so you can try everything without hardware. Demo settings and scenes are separate; your real ones are kept for when you switch back.'

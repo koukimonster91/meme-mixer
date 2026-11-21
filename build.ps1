@@ -1,8 +1,8 @@
 # Builds dist\MemeMixer.exe: the tray app with the web app embedded inside it.
 # Needs only Windows (uses the C# compiler that ships with .NET Framework 4.x).
-#   .\build.ps1                      # version from VERSION, repo from github-repo.txt
-#   .\build.ps1 -Repo owner/name     # GitHub repository that updates come from
-param([string]$Repo, [string]$Version, [string]$Out)
+#   .\build.ps1                          # version from VERSION, update address from update-source.txt
+#   .\build.ps1 -UpdateUrl https://...   # where installed copies look for updates
+param([string]$UpdateUrl, [string]$Version, [string]$Out)
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -10,11 +10,15 @@ Set-Location $root
 
 $version = if ($Version) { $Version } else { (Get-Content (Join-Path $root 'VERSION') -Raw).Trim() }
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION must look like 1.2.3 (got '$version')" }
-if (-not $Repo) {
-  $repoFile = Join-Path $root 'github-repo.txt'
-  $Repo = if (Test-Path $repoFile) { (Get-Content $repoFile -Raw).Trim() } else { 'OWNER/meme-mixer' }
+if (-not $UpdateUrl) {
+  $srcFile = Join-Path $root 'update-source.txt'
+  $UpdateUrl = if (Test-Path $srcFile) { (Get-Content $srcFile -Raw).Trim() } else { '' }
 }
-if ($Repo -notmatch '^[\w.-]+/[\w.-]+$') { throw "Repo must look like owner/name (got '$Repo')" }
+if ($UpdateUrl -and $UpdateUrl -notmatch '^https?://[^\s"]+$') { throw "UpdateUrl must be a web address (got '$UpdateUrl')" }
+# Public half of the update signing key (new-signing-key.ps1). Without it, the exe can't update itself.
+$pubFile = Join-Path $root 'update-signing-key.pub.xml'
+$publicKey = if (Test-Path $pubFile) { (Get-Content $pubFile -Raw).Trim() } else { '' }
+if ($publicKey -and $publicKey -notmatch '^<RSAKeyValue><Modulus>[A-Za-z0-9+/=]+</Modulus><Exponent>[A-Za-z0-9+/=]+</Exponent></RSAKeyValue>$') { throw 'update-signing-key.pub.xml should hold only a public key' }
 
 $build = Join-Path $root 'build'
 $dist = Join-Path $root 'dist'
@@ -69,7 +73,8 @@ Copy-Item $pluginFile (Join-Path $stage 'public\MemeMixer.streamDeckPlugin')
 static class BuildInfo
 {
     public const string Version = "$version";
-    public const string Repo = "$Repo";
+    public const string UpdateUrl = "$UpdateUrl";
+    public const string UpdatePublicKey = "$publicKey";
 }
 "@ | Set-Content (Join-Path $build 'BuildInfo.cs') -Encoding UTF8
 
@@ -116,4 +121,5 @@ $out = if ($Out) { $Out } else { Join-Path $dist 'MemeMixer.exe' }
 if ($LASTEXITCODE -ne 0) { throw 'compile failed' }
 
 $size = [Math]::Round((Get-Item $out).Length / 1KB)
-Write-Host "Built $out  (v$version, updates from github.com/$Repo, $size KB)"
+$from = if ($UpdateUrl -and $publicKey) { $UpdateUrl } else { 'nowhere (updates not set up)' }
+Write-Host "Built $out  (v$version, signed updates from $from, $size KB)"

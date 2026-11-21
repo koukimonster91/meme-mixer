@@ -41,7 +41,9 @@ static class Paths
     public static readonly string ServerLog = Path.Combine(DataDir, "server.log");
     public static readonly string TrayLog = Path.Combine(DataDir, "tray.log");
     public static readonly string DemoFlag = Path.Combine(DataDir, "demo-mode");
-    public static readonly string ApiBase = Env("MEMEMIXER_API", "https://api.github.com").TrimEnd('/');
+    // Where updates come from (latest.json + latest.json.sig + the exe). MEMEMIXER_UPDATES is for testing;
+    // whatever the address, an update is only accepted with a valid signature (see Updates.Verify).
+    public static readonly string UpdateBase = Env("MEMEMIXER_UPDATES", BuildInfo.UpdateUrl).TrimEnd('/');
     public static readonly string NodeDist = Env("MEMEMIXER_NODE_DIST", "https://nodejs.org/dist").TrimEnd('/');
     public const string MutexName = "Local\\MemeMixer.Tray";
     public const string QuitEventName = "Local\\MemeMixer.Quit";
@@ -180,13 +182,29 @@ static class Util
 
     public static string Get(string url, string accept)
     {
+        return Encoding.UTF8.GetString(GetBytes(url, accept, 10 * 1024 * 1024));
+    }
+
+    public static byte[] GetBytes(string url, string accept, int maxBytes)
+    {
         HttpWebRequest r = (HttpWebRequest)WebRequest.Create(url);
         r.UserAgent = "MemeMixer-Updater";
         if (accept != null) r.Accept = accept;
         r.Timeout = 20000;
+        r.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
         using (WebResponse resp = r.GetResponse())
-        using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
-            return sr.ReadToEnd();
+        using (Stream s = resp.GetResponseStream())
+        using (MemoryStream ms = new MemoryStream())
+        {
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = s.Read(buf, 0, buf.Length)) > 0)
+            {
+                ms.Write(buf, 0, n);
+                if (ms.Length > maxBytes) throw new Exception("response too large");
+            }
+            return ms.ToArray();
+        }
     }
 
     public static void Download(string url, string dest, Action<int> progress)
@@ -493,6 +511,57 @@ class UpdateInfo
 {
     public Version Version;
     public string Tag, Url, Sha256, Notes;
+    public long Size;
+}
+
+// Signed updates. Each release publishes latest.json and latest.json.sig: an RSA-SHA256 signature
+// of latest.json's exact bytes, made with a private key that never leaves the publisher's PC.
+// The matching public key is built into this exe, so the update server (or anyone who takes it
+// over) can't hand out a different program: latest.json carries the exe's SHA-256 and size.
+static class Updates
+{
+    public static bool Verify(byte[] data, byte[] signature)
+    {
+        if (string.IsNullOrEmpty(BuildInfo.UpdatePublicKey)) return false;
+        using (RSACryptoServiceProvider rsa = new RSACryptoServiceProvider())
+        {
+            rsa.PersistKeyInCsp = false;
+            rsa.FromXmlString(BuildInfo.UpdatePublicKey);
+            return rsa.VerifyData(data, CryptoConfig.MapNameToOID("SHA256"), signature);
+        }
+    }
+
+    // null = nothing published yet
+    public static UpdateInfo FetchLatest()
+    {
+        string bust = "?t=" + DateTime.UtcNow.Ticks;
+        byte[] manifest, sig;
+        try { manifest = Util.GetBytes(Paths.UpdateBase + "/latest.json" + bust, "application/json", 256 * 1024); }
+        catch (WebException ex)
+        {
+            HttpWebResponse r = ex.Response as HttpWebResponse;
+            if (r != null && r.StatusCode == HttpStatusCode.NotFound) return null;
+            throw;
+        }
+        sig = Convert.FromBase64String(Encoding.ASCII.GetString(Util.GetBytes(Paths.UpdateBase + "/latest.json.sig" + bust, null, 16 * 1024)).Trim());
+        if (!Verify(manifest, sig)) throw new Exception("the update information isn't signed by the MemeMixer publisher, so it was ignored");
+        Dictionary<string, object> m = Json.Obj(Encoding.UTF8.GetString(manifest));
+        if (!string.Equals(Json.Str(m, "app"), "MemeMixer", StringComparison.Ordinal)) throw new Exception("the update information is for a different program");
+        UpdateInfo info = new UpdateInfo();
+        info.Tag = Json.Str(m, "version");
+        info.Version = Util.ParseVersion(info.Tag);
+        info.Notes = (Json.Str(m, "notes") ?? "").Replace("\r", "").Trim();
+        object e; m.TryGetValue("exe", out e);
+        Dictionary<string, object> exe = e as Dictionary<string, object>;
+        if (exe == null) throw new Exception("update " + info.Tag + " has no program file");
+        string file = Json.Str(exe, "file");
+        info.Sha256 = (Json.Str(exe, "sha256") ?? "").ToLowerInvariant();
+        long.TryParse(Json.Str(exe, "size"), out info.Size);
+        if (string.IsNullOrEmpty(file) || file.Contains("/") || file.Contains("\\") || file.Contains("..") || info.Sha256.Length != 64)
+            throw new Exception("update " + info.Tag + " has bad file details");
+        info.Url = Paths.UpdateBase + "/" + Uri.EscapeDataString(file);
+        return info;
+    }
 }
 
 class TrayApp : ApplicationContext
@@ -970,9 +1039,9 @@ class TrayApp : ApplicationContext
     void CheckForUpdates(bool userAsked)
     {
         if (busy) return;
-        if (BuildInfo.Repo.Length == 0 || BuildInfo.Repo.Contains("OWNER"))
+        if (Paths.UpdateBase.Length == 0 || BuildInfo.UpdatePublicKey.Length == 0)
         {
-            if (userAsked) MessageBox.Show("Updates aren't set up in this build (no GitHub repository).", Paths.AppName);
+            if (userAsked) MessageBox.Show("Updates aren't set up in this build.", Paths.AppName);
             return;
         }
         busy = true;
@@ -1020,33 +1089,8 @@ class TrayApp : ApplicationContext
 
     UpdateInfo FetchLatest(out bool noReleases)
     {
-        noReleases = false;
-        string json;
-        try { json = Util.Get(Paths.ApiBase + "/repos/" + BuildInfo.Repo + "/releases/latest", "application/vnd.github+json"); }
-        catch (WebException ex)
-        {
-            HttpWebResponse r = ex.Response as HttpWebResponse;
-            if (r != null && r.StatusCode == HttpStatusCode.NotFound) { noReleases = true; return null; }
-            throw;
-        }
-        Dictionary<string, object> rel = Json.Obj(json);
-        UpdateInfo info = new UpdateInfo();
-        info.Tag = Json.Str(rel, "tag_name");
-        info.Version = Util.ParseVersion(info.Tag);
-        info.Notes = (Json.Str(rel, "body") ?? "").Replace("\r", "").Trim();
-        object assets; rel.TryGetValue("assets", out assets);
-        if (assets is IEnumerable)
-        {
-            foreach (object o in (IEnumerable)assets)
-            {
-                Dictionary<string, object> a = o as Dictionary<string, object>;
-                if (a == null || !string.Equals(Json.Str(a, "name"), "MemeMixer.exe", StringComparison.OrdinalIgnoreCase)) continue;
-                info.Url = Json.Str(a, "browser_download_url");
-                string digest = Json.Str(a, "digest");
-                if (digest != null && digest.StartsWith("sha256:")) info.Sha256 = digest.Substring(7).ToLowerInvariant();
-            }
-        }
-        if (info.Url == null) throw new Exception("release " + info.Tag + " has no MemeMixer.exe");
+        UpdateInfo info = Updates.FetchLatest();
+        noReleases = info == null;
         return info;
     }
 
@@ -1061,7 +1105,9 @@ class TrayApp : ApplicationContext
             try
             {
                 Util.Download(info.Url, Paths.NewExe, delegate (int p) { OnUi(delegate { updateItem.Text = "Downloading update… " + p + "%"; }); });
-                if (info.Sha256 != null && Util.Sha256(Paths.NewExe) != info.Sha256) throw new Exception("the download didn't match its checksum");
+                // The signed latest.json gave the exact SHA-256 and size: anything else is refused.
+                if (string.IsNullOrEmpty(info.Sha256) || Util.Sha256(Paths.NewExe) != info.Sha256) { File.Delete(Paths.NewExe); throw new Exception("the download didn't match the signed checksum"); }
+                if (info.Size > 0 && new FileInfo(Paths.NewExe).Length != info.Size) { File.Delete(Paths.NewExe); throw new Exception("the download has the wrong size"); }
                 byte[] head = new byte[2];
                 using (FileStream fs = File.OpenRead(Paths.NewExe)) fs.Read(head, 0, 2);
                 if (head[0] != 'M' || head[1] != 'Z' || new FileInfo(Paths.NewExe).Length < 50000) throw new Exception("the download isn't a valid program");

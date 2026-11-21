@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0 (2026-11-21)
+
+### Changed
+- **Updates now come from updates.sfdgadfgsdfwef.top instead of GitHub.**
+  - Every update is signed with a private key that never leaves the publisher's PC.
+  - MemeMixer installs an update only if its signature checks out and the download matches the signed checksum and size. Even someone who took over the update site couldn't push a fake update.
+  - Updating from 1.6.0 to this version happens through GitHub one last time.
+- **The Tesira design file download** in Settings now comes from the update site.
+
 ## 1.6.0 (2026-11-21)
 
 ### Added
