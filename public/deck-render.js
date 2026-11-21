@@ -77,6 +77,27 @@
       text(72, 112, fit(v.name, 11), 20, C.text, 700) + text(72, 133, v.dir === 'prev' ? 'Back' : v.dir === 'next' ? 'Next' : 'Go to', 15, C.sub, 500));
   }
 
+  function profile(v) {
+    return svg(
+      `<path d="M46 26 L98 78 M98 26 L46 78" stroke="${C.text}" stroke-width="13" stroke-linecap="round"/>` +
+      text(72, 120, fit(v.name, 11), 21, C.sub, 700));
+  }
+
+  // Wraps a page name over up to two lines.
+  function pagename(v) {
+    const name = String(v.name || '').trim();
+    let l1 = name, l2 = '';
+    if (name.length > 12) { // wrap longer names at a space
+      l1 = ''; for (const w of name.split(/\s+/)) { if (!l2 && (l1 + ' ' + w).trim().length <= 12) l1 = (l1 + ' ' + w).trim(); else l2 = (l2 + ' ' + w).trim(); }
+    }
+    const longest = Math.max(l1.length, l2.length);
+    const one = !l2, size = longest <= 7 ? 26 : longest <= 10 ? 22 : 19;
+    return svg(
+      (one ? text(72, 74, fit(l1, 12), size, C.text, 800) : text(72, 60, fit(l1, 12), size, C.text, 800) + text(72, 88, fit(l2, 12), size, C.text, 800)) +
+      text(72, 126, v.count > 1 ? `Page ${v.index} of ${v.count}` : 'Page', 15, C.sub, 600) +
+      `<rect x="34" y="104" width="76" height="3" rx="1.5" fill="${C.accent}"/>`);
+  }
+
   function invalid(v) { return svg(text(72, 70, '?', 44, C.sub, 700) + text(72, 110, fit(v.name, 11), 18, C.sub, 600) + text(72, 130, v.sub || '', 14, C.red, 600)); }
 
   function renderKey(v) {
@@ -87,6 +108,8 @@
       case 'meter': return meter(v);
       case 'scene': return scene(v);
       case 'page': return page(v);
+      case 'profile': return profile(v);
+      case 'pagename': return pagename(v);
       default: return invalid(v);
     }
   }

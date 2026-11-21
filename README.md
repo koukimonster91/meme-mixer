@@ -31,7 +31,9 @@ MemeMixer comes with a Stream Deck plugin, made for the 15-key Stream Deck.
 Every key is then set up in MemeMixer on the **Stream Deck** page:
 - **Mute on/off:** sources in a mix, mix masters, all sources in a mix, Input Master channels, a source in every mix, or all outputs.
 - **Volume up/down:** any fader. Hold the key to repeat.
-- **VU meter**, **recall a scene**, and **change page**.
+- **VU meter**, **recall a scene**, **change page**, **show the page name**, and an **X key** that returns to your previous Stream Deck profile.
+
+**Export layout** and **Import layout…** on the same page move a layout to another PC.
 
 Changes show up on the Stream Deck within a moment. The plugin finds MemeMixer on this PC by itself. If MemeMixer isn't running, the keys say so.
 

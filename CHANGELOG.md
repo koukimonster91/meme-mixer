@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 (2026-11-21)
+
+### Added
+- **Exit key (X):** a Stream Deck key with a big X that switches the Stream Deck back to the profile you were using before. Stream Deck lets plugins return to the previous profile, but not open your own profiles by name.
+- **Page name key:** shows the name of the page it's on (for example "Headphone 1 · Page 1 of 5"). Pressing it does nothing.
+- **Export / import the Stream Deck layout:** on the Stream Deck page, **Export layout** saves all pages and keys to a `.json` file, and **Import layout…** loads one, for example on another PC. Files that aren't MemeMixer layouts are refused.
+
 ## 1.2.2 (2026-11-20)
 
 ### Fixed

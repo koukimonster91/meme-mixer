@@ -866,6 +866,36 @@ const DECK_KINDS = {
   meter: [['source', 'Source (input meter)'], ['master', 'Mix master'], ['input', 'Input Master channel'], ['gate', 'Noise gate reduction']],
 };
 
+// Checks an imported layout file and keeps only keys MemeMixer understands.
+function cleanDeckLayout(data) {
+  const pages = data && Array.isArray(data.pages) ? data.pages : null;
+  if (!pages || !pages.length) throw new Error('this isn\'t a MemeMixer Stream Deck layout');
+  const TYPES = ['mute', 'volume', 'meter', 'scene', 'page', 'pagename', 'profile'];
+  const str = (s, n) => (typeof s === 'string' ? s.slice(0, n) : undefined);
+  const cleanKey = (k) => {
+    if (!k || typeof k !== 'object' || !TYPES.includes(k.type)) return null;
+    const out = { type: k.type };
+    if (str(k.label, 14)) out.label = str(k.label, 14);
+    if (k.type === 'scene') out.name = str(k.name, 60) || '';
+    if (k.type === 'page') out.to = k.to === 'next' || k.to === 'prev' ? k.to : Math.max(0, Math.min(49, Number(k.to) || 0));
+    if (k.type === 'volume') { out.dir = k.dir === 'down' ? 'down' : 'up'; out.step = Math.min(20, Math.max(0.1, Number(k.step) || 1)); }
+    if (['mute', 'volume', 'meter'].includes(k.type)) {
+      const t = k.target || {};
+      out.target = { kind: str(t.kind, 30) || 'master' };
+      if (t.output != null) out.target.output = Math.max(0, Math.floor(Number(t.output) || 0));
+      if (t.source != null) out.target.source = str(t.source, 60);
+      if (t.channel != null) out.target.channel = Math.max(1, Math.floor(Number(t.channel) || 1));
+    }
+    return out;
+  };
+  return {
+    pages: pages.slice(0, 50).map((p, i) => ({
+      name: str(p && p.name, 24) || `Page ${i + 1}`,
+      keys: Array.from({ length: 15 }, (_, j) => cleanKey(p && Array.isArray(p.keys) ? p.keys[j] : null)),
+    })),
+  };
+}
+
 function renderDeck() {
   $('#pageSub').textContent = 'Keys for the MemeMixer Stream Deck plugin · 15 keys (5 × 3) per page';
   const cfg = S.config;
@@ -954,8 +984,9 @@ function renderDeck() {
     const k = keyAt(sel);
     const typeVal = !k ? '' : k.type === 'volume' ? (k.dir === 'down' ? 'voldown' : 'volup') : k.type;
     const kids = [h('h2', {}, `Key ${sel + 1}`, h('span', { class: 'deck-pos' }, ` · row ${Math.floor(sel / 5) + 1}, column ${(sel % 5) + 1}`))];
-    kids.push(h('div', { class: 'row' }, field('Does', select([['', 'Nothing (empty)'], ['mute', 'Mute on/off'], ['volup', 'Volume up'], ['voldown', 'Volume down'], ['meter', 'VU meter'], ['scene', 'Recall a scene'], ['page', 'Change page']], typeVal, (v) => {
+    kids.push(h('div', { class: 'row' }, field('Does', select([['', 'Nothing (empty)'], ['mute', 'Mute on/off'], ['volup', 'Volume up'], ['voldown', 'Volume down'], ['meter', 'VU meter'], ['scene', 'Recall a scene'], ['page', 'Change page'], ['pagename', 'Show the page name'], ['profile', 'Exit to previous Stream Deck profile (X)']], typeVal, (v) => {
       if (!v) return setKey(sel, null);
+      if (v === 'pagename' || v === 'profile') return setKey(sel, { type: v });
       const prevTarget = k && k.target;
       if (v === 'scene') return setKey(sel, { type: 'scene', name: (S.snapshots || [])[0] || '' });
       if (v === 'page') return setKey(sel, { type: 'page', to: 'next' });
@@ -1012,6 +1043,12 @@ function renderDeck() {
     if (k && k.type === 'page') {
       kids.push(h('div', { class: 'row' }, field('Goes to', select([['next', 'Next page'], ['prev', 'Previous page'], ...layout.pages.map((p, i) => [i, p.name || `Page ${i + 1}`])], k.to, (v) => setKey(sel, { ...k, to: v === 'next' || v === 'prev' ? v : Number(v) })))));
     }
+    if (k && k.type === 'profile') {
+      kids.push(h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Shows an X. Pressing it switches the Stream Deck back to the profile you were using before. Stream Deck only lets plugins go back to the previous profile; they can\'t open your own profiles by name.'));
+    }
+    if (k && k.type === 'pagename') {
+      kids.push(h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Shows the name of the page it\'s on, so you can tell the pages apart. Pressing it does nothing.'));
+    }
     if (k) {
       const label = h('input', { class: 'input', placeholder: 'Automatic', maxlength: 14, value: k.label || '' });
       label.addEventListener('change', () => setKey(sel, { ...k, label: label.value.trim() || undefined }));
@@ -1058,9 +1095,38 @@ function renderDeck() {
       h('li', {}, 'That\'s it. Each key shows what you set on this page, and pages are switched with Change page keys.')),
     h('div', { class: 'row' }, status, reset));
 
+  // Export / import, to move a layout to another PC.
+  const exportLayout = () => {
+    const data = { format: 'MemeMixer Stream Deck layout', formatVersion: 1, app: S.version || 'dev', exported: new Date().toISOString(), pages: layout.pages };
+    const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })), download: `MemeMixer Stream Deck ${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('Layout exported');
+  };
+  const fileIn = h('input', { type: 'file', accept: '.json,application/json', hidden: true });
+  fileIn.addEventListener('change', async () => {
+    const f = fileIn.files[0];
+    fileIn.value = '';
+    if (!f) return;
+    let imported;
+    try { imported = cleanDeckLayout(JSON.parse(await f.text())); }
+    catch (e) { toast(`Can't import: ${e.message}`); return; }
+    const n = imported.pages.length;
+    if (!confirm(`Replace your Stream Deck layout (${layout.pages.length} page${layout.pages.length === 1 ? '' : 's'}) with "${f.name}" (${n} page${n === 1 ? '' : 's'})?`)) return;
+    layout = imported; pg = 0; sel = null;
+    await post('/api/deck/save', { layout });
+    drawAll();
+    toast('Layout imported');
+  });
+  const transfer = h('div', { class: 'card' }, h('h2', {}, 'Move to another PC'),
+    h('p', { class: 'hint' }, 'Export saves all pages and keys to a file. Import it in MemeMixer on the other PC. Keys point at this setup\'s outputs, sources and scenes, so if the other PC\'s setup differs, some keys may show "Not found" until you set them again.'),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn', onclick: exportLayout }, 'Export layout'),
+      h('button', { class: 'btn', onclick: () => fileIn.click() }, 'Import layout…'), fileIn));
+
   $('#page').append(h('div', { class: 'deck-layout' },
     h('div', { class: 'deck-main' }, tabs, pageTools, h('div', { class: 'deck-frame' }, grid)),
-    h('div', { class: 'deck-side' }, editor, install)));
+    h('div', { class: 'deck-side' }, editor, install, transfer)));
 
   const pollStatus = async () => {
     if (!grid.isConnected) return;

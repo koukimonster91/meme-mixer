@@ -179,6 +179,13 @@ async function keyDown(context) {
     for (const [c, kk] of keys) if (kk.device === dev) draw(c);
     return;
   }
+  if (v.type === 'profile') {
+    // With no profile name, Stream Deck goes back to the previous profile. (Plugins can't
+    // open user-made profiles by name; only profiles bundled with the plugin.)
+    if (sd) sd.send(JSON.stringify({ event: 'switchToProfile', context: PLUGIN_UUID, device: dev, payload: {} }));
+    return;
+  }
+  if (v.type === 'pagename') return;
   const page = pageOf.get(dev) || 0, idx = keyIndex(k);
   const r = await press(page, idx);
   if (!r.ok) { sdSend('showAlert', context); return; }

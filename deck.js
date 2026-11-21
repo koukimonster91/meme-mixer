@@ -9,6 +9,8 @@
 //   { type: 'meter',  target }            kinds: source, master, input, gate
 //   { type: 'scene',  name }
 //   { type: 'page',   to: 'next' | 'prev' | <page index> }
+//   { type: 'profile' }                   back to the previous Stream Deck profile (shows an X)
+//   { type: 'pagename' }                  just shows the current page's name
 //   optional on every key: label (overrides the automatic name)
 
 const KEYS = 15;
@@ -139,6 +141,12 @@ module.exports = function createDeck({ getConfig, getState, applyOps, getMeter, 
     if (!key || !key.type) return null;
     const label = key.label || null;
     if (key.type === 'scene') return { type: 'scene', name: label || key.name, sub: 'Scene' };
+    // Leaves MemeMixer: the plugin switches back to the previous Stream Deck profile.
+    if (key.type === 'profile') return { type: 'profile', name: label || 'Exit' };
+    if (key.type === 'pagename') {
+      const ps = pages();
+      return { type: 'pagename', name: label || ps[pageIndex].name || `Page ${pageIndex + 1}`, index: pageIndex + 1, count: pageCount };
+    }
     if (key.type === 'page') {
       const to = key.to === 'next' ? (pageIndex + 1) % pageCount : key.to === 'prev' ? (pageIndex - 1 + pageCount) % pageCount : Math.min(Math.max(0, Number(key.to) || 0), pageCount - 1);
       return { type: 'page', dir: key.to === 'prev' ? 'prev' : key.to === 'next' ? 'next' : 'go', to, name: label || pages()[to].name };
@@ -170,7 +178,8 @@ module.exports = function createDeck({ getConfig, getState, applyOps, getMeter, 
     const key = ((pages()[pageIndex] || {}).keys || [])[keyIndex];
     if (!key) return { ok: false, message: 'empty key' };
     if (key.type === 'scene') return recallScene(key.name);
-    if (key.type === 'page' || key.type === 'meter') return { ok: true }; // page keys are handled by the plugin; meters do nothing
+    // page and profile keys are handled by the plugin; meters and page names do nothing
+    if (['page', 'meter', 'profile', 'pagename'].includes(key.type)) return { ok: true };
     const c = control(key.target);
     if (!c) return { ok: false, message: 'target not found' };
     if (key.type === 'mute') {
