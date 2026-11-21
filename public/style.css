@@ -482,3 +482,8 @@ a.btn { text-decoration: none; font-size: 13.5px; }
   .deck-grid { --key: calc((100vw - 32px - 24px - 4 * 8px) / 5); gap: 8px; }
   .deck-key { border-radius: 10px; }
 }
+
+/* noise gate picker */
+.gate-tabs { margin-bottom: 16px; }
+.gate-byp { margin-left: 8px; padding: 1px 7px; border-radius: 8px; font-size: 10.5px; font-weight: 700; color: #1a1205; background: #ffb547; }
+.gate-byp[hidden] { display: none; }

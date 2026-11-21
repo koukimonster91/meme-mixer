@@ -677,10 +677,23 @@ function Toggle(label, get, set, cls = '') {
   return { el, update: () => { const v = get(); input.checked = !!v; input.disabled = v == null; } };
 }
 
-// --- noise gate page
+// --- noise gate page: one block at a time, picked with the chips at the top
+const gateList = () => S.config.noiseGates || [{ name: 'Gate', tag: T().noiseGate, channels: S.config.noiseGateChannels || ['Gate'] }];
 function renderGate() {
-  const tag = T().noiseGate;
-  $('#pageSub').textContent = `Noise Gate  ·  ${tag}`;
+  const gates = gateList();
+  let gi = Math.min(store.get('gate:sel', 0), gates.length - 1);
+  const g = gates[Math.max(0, gi)];
+  const tag = g.tag;
+  $('#pageSub').textContent = `${gates.length > 1 ? `${gates.length} noise gates` : 'Noise Gate'}  ·  ${g.name}: ${tag}`;
+  if (gates.length > 1) {
+    const chips = gates.map((x, i) => {
+      const dot = h('span', { class: 'gate-byp', title: 'Bypassed' }, 'Bypassed');
+      const c = h('button', { class: `chip ${i === gi ? 'on' : ''}`, onclick: () => { store.set('gate:sel', i); renderPage(); } }, x.name, dot);
+      return { c, dot, tag: x.tag };
+    });
+    comps.push({ update() { for (const x of chips) x.dot.hidden = st(x.tag, 'bypass') !== true; } });
+    $('#page').append(h('div', { class: 'deck-tabs gate-tabs' }, chips.map((x) => x.c)));
+  }
   const set = (attr) => (v) => send([{ tag, attr, idx: [], value: v }]);
   const thr = Strip({ name: 'Threshold', sub: 'dBu', unit: 'dBu', linear: true, min: -60, max: 24, def: -40,
     get: () => st(tag, 'threshold'), set: set('threshold') });
@@ -688,7 +701,7 @@ function renderGate() {
   const release = Param({ name: 'Release', unit: 'ms', min: 0.1, max: 40000, log: true, get: () => st(tag, 'releaseTime'), set: set('releaseTime') });
   const bypass = Toggle('Bypass gate', () => st(tag, 'bypass'), set('bypass'), 'warn');
 
-  const grs = S.config.noiseGateChannels.map((name) => {
+  const grs = (g.channels || [g.name]).map((name) => {
     const m = Meter('meter gr');
     const val = h('span', { class: 'val' }, '0.0');
     return { name, m, val, el: h('div', { class: 'gr-meter' }, m.el, val, h('span', {}, name)) };
@@ -885,6 +898,7 @@ function cleanDeckLayout(data) {
       if (t.output != null) out.target.output = Math.max(0, Math.floor(Number(t.output) || 0));
       if (t.source != null) out.target.source = str(t.source, 60);
       if (t.channel != null) out.target.channel = Math.max(1, Math.floor(Number(t.channel) || 1));
+      if (t.gate != null) out.target.gate = Math.max(0, Math.floor(Number(t.gate) || 0));
     }
     return out;
   };
@@ -1006,6 +1020,7 @@ function renderDeck() {
         if (['source', 'master', 'allSources'].includes(kind)) nt.output = t.output ?? 0;
         if (['source', 'sourceEverywhere'].includes(kind)) nt.source = t.source || cfg.sources[0].name;
         if (kind === 'input') nt.channel = cfg.inputChannels[0].channel;
+        if (kind === 'gate') nt.gate = 0;
         if (k.type === 'meter' && kind === 'source') delete nt.output;
         setKey(sel, { ...k, target: nt });
       }))));
@@ -1026,6 +1041,9 @@ function renderDeck() {
       }
       if (t.kind === 'input') {
         row.append(field('Channel', select(cfg.inputChannels.filter((c) => !(c.link && c.link < c.channel)).map((c) => [c.channel, c.link ? c.name.replace(/ [LR]$/, '') + ' (L+R)' : c.name]), t.channel, (v) => upd({ channel: Number(v) }))));
+      }
+      if (t.kind === 'gate') {
+        row.append(field('Gate', select(gateList().map((x, i) => [i, x.name]), t.gate ?? 0, (v) => upd({ gate: Number(v) }))));
       }
       if (row.childNodes.length) kids.push(row);
       if (k.type === 'volume') {
@@ -1165,11 +1183,12 @@ function renderSettings() {
     mixer: ['Matrix mixer', tagInput(c.tags.mixer)],
     inputMaster: ['Input Master (Level)', tagInput(c.tags.inputMaster)],
     inputMeter: ['Input meter (Peak Meter after Input Master)', tagInput(c.tags.inputMeter)],
-    noiseGate: ['Noise gate', tagInput(c.tags.noiseGate)],
     aecInput: ['AEC input', tagInput(c.tags.aecInput)],
   };
   const masters = c.outputs.map((o) => [`${o.name} master (Level)`, tagInput(c.tags.masters[o.master] || '')]);
   const masterMeters = c.outputs.map((o) => [`${o.name} master meter`, tagInput((c.tags.masterMeters || [])[o.master] || '')]);
+  const gates = gateList();
+  const gateFields = gates.map((g) => [`${g.name} noise gate`, tagInput(g.tag || '')]);
   const save = async () => {
     const t = Object.fromEntries(Object.entries(tags).map(([k, [, i]]) => [k, i.value.trim()]));
     const m = [...c.tags.masters];
@@ -1177,7 +1196,9 @@ function renderSettings() {
     c.outputs.forEach((o, i) => { m[o.master] = masters[i][1].value.trim(); mm[o.master] = masterMeters[i][1].value.trim(); });
     t.masters = m;
     t.masterMeters = mm;
-    await post('/api/config', { config: { tesira: { host: host.value.trim(), port: Number(port.value) || 23 }, tags: t }, reconnect: true });
+    const noiseGates = gates.map((g, i) => ({ ...g, tag: gateFields[i][1].value.trim() }));
+    if (noiseGates[0]) t.noiseGate = noiseGates[0].tag;
+    await post('/api/config', { config: { tesira: { host: host.value.trim(), port: Number(port.value) || 23 }, tags: t, noiseGates }, reconnect: true });
     toast('Saved — reconnecting');
   };
   const field = ([label, input]) => h('div', { class: 'field' }, h('label', {}, label), input);
@@ -1225,6 +1246,7 @@ function renderSettings() {
       ...Object.values(tags).map((t) => h('div', { class: 'row' }, field(t))),
       ...masters.map((t) => h('div', { class: 'row' }, field(t))),
       ...masterMeters.map((t) => h('div', { class: 'row' }, field(t))),
+      ...gateFields.map((t) => h('div', { class: 'row' }, field(t))),
       h('div', { class: 'row', style: { marginTop: '16px' } }, h('button', { class: 'btn primary', onclick: save }, 'Save tags'))),
     h('div', { class: 'card' }, h('h2', {}, 'Tesira design file'),
       h('p', { class: 'hint' }, 'The Tesira Designer file MemeMixer is set up for. Open it in Tesira Designer to see or load the design. It\'s kept on GitHub, so this link always gets the latest copy.'),

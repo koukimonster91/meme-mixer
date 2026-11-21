@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 (2026-11-21)
+
+### Added
+- **Noise gates for each mic.** The Noise Gate page now handles several gates. Chips at the top pick **Gate** (the existing NoiseGate1) or **Mic 1–4** (NoiseGate2–NoiseGate5). Each gate has its own threshold, attack, release, bypass and gain-reduction meter, and a chip shows **Bypassed** when its gate is bypassed.
+- **Settings:** one instance-tag field per gate, checked against the Tesira's own list like the other tags.
+- **Stream Deck:** gate threshold up/down and gate reduction meter keys have a **Gate** picker. Keys made before 1.5.0 keep controlling the first gate.
+- Existing settings move over automatically: the current gate keeps its tag and channel names, and the four mic gates are added.
+
 ## 1.4.1 (2026-11-21)
 
 ### Added

@@ -72,6 +72,15 @@ const DEFAULT_CONFIG = {
   aecChannels: 12,
   meter: { min: -60, max: 24, yellow: 0, red: 18 },
   presets: [],
+  // Noise Gate blocks shown on the Noise Gate page. Each block has one threshold / attack /
+  // release / bypass; `channels` names its gain-reduction meters.
+  noiseGates: [
+    { name: 'Gate', tag: 'NoiseGate1', channels: ['Gate 1', 'Gate 2'] },
+    { name: 'Mic 1', tag: 'NoiseGate2', channels: ['Mic 1'] },
+    { name: 'Mic 2', tag: 'NoiseGate3', channels: ['Mic 2'] },
+    { name: 'Mic 3', tag: 'NoiseGate4', channels: ['Mic 3'] },
+    { name: 'Mic 4', tag: 'NoiseGate5', channels: ['Mic 4'] },
+  ],
 };
 
 function deepMerge(base, over) {
@@ -82,9 +91,20 @@ function deepMerge(base, over) {
 }
 
 function loadConfig() {
-  try { return deepMerge(DEFAULT_CONFIG, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))); }
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); }
   catch { fs.writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2)); return structuredClone(DEFAULT_CONFIG); }
+  const cfg = deepMerge(DEFAULT_CONFIG, raw);
+  if (!Array.isArray(raw.noiseGates)) {
+    // Before 1.5.0 there was one gate (tags.noiseGate): keep its tag and channel names, add the mic gates.
+    cfg.noiseGates = structuredClone(DEFAULT_CONFIG.noiseGates);
+    cfg.noiseGates[0].tag = cfg.tags.noiseGate || 'NoiseGate1';
+    if (Array.isArray(cfg.noiseGateChannels)) cfg.noiseGates[0].channels = cfg.noiseGateChannels;
+    try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch {}
+  }
+  return cfg;
 }
+const gateTags = () => (config.noiseGates || []).map((g) => g.tag).filter(Boolean);
 function saveConfig() { fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2)); }
 
 function loadSnapshots() { try { return JSON.parse(fs.readFileSync(SNAP_PATH, 'utf8')); } catch { return {}; } }
@@ -193,7 +213,7 @@ async function setup(gen) {
     const r = await tesira.send('SESSION get aliases');
     if (r.ok && Array.isArray(r.value)) { aliases = r.value.map(String); broadcast('aliases', aliases); }
   } catch {}
-  const missing = [T.mixer, T.inputMaster, T.inputMeter, T.noiseGate, T.aecInput, ...T.masters, ...(T.masterMeters || [])]
+  const missing = [T.mixer, T.inputMaster, T.inputMeter, ...gateTags(), T.aecInput, ...T.masters, ...(T.masterMeters || [])]
     .filter((t) => t && aliases.length && !aliases.includes(t));
   if (missing.length) addLog(`instance tags not found on device: ${missing.join(', ')} — check Settings`);
 
@@ -224,14 +244,14 @@ async function setup(gen) {
   for (const tag of new Set((T.masterMeters || []).filter(Boolean))) {
     if (tag !== T.inputMeter) sub(tag, 'levels', null, (v) => { meters[tag] = [].concat(v); }, 100);
   }
-  sub(T.noiseGate, 'allGainReduction', null, (v) => { meters[T.noiseGate] = [].concat(v); }, 100);
+  for (const tag of new Set(gateTags())) sub(tag, 'allGainReduction', null, (v) => { meters[tag] = [].concat(v); }, 100);
   sub(T.aecInput, 'phantomPowers', null, arrayTo(T.aecInput, 'phantomPower'));
   sub(T.aecInput, 'peaks', null, (v) => { meters[`${T.aecInput}:peaks`] = [].concat(v); }, 200);
 
   clearInterval(pollTimer);
   const poll = () => {
     if (!tesira.ready) return;
-    for (const a of ['threshold', 'attackTime', 'releaseTime', 'bypass']) getInto(T.noiseGate, a);
+    for (const tag of new Set(gateTags())) for (const a of ['threshold', 'attackTime', 'releaseTime', 'bypass']) getInto(tag, a);
     for (let c = 1; c <= config.aecChannels; c++) getInto(T.aecInput, 'gain', [c]);
   };
   poll();
@@ -291,7 +311,7 @@ const SETTABLE = new Set(['crosspointLevel', 'crosspointLevelState', 'level', 'm
 
 function allowedTags() {
   const T = config.tags;
-  return new Set([T.mixer, T.inputMaster, T.noiseGate, T.aecInput, ...T.masters].filter(Boolean));
+  return new Set([T.mixer, T.inputMaster, ...gateTags(), T.aecInput, ...T.masters].filter(Boolean));
 }
 
 function applyOps(ops) {

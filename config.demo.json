@@ -227,5 +227,43 @@
     "yellow": 0,
     "red": 18
   },
-  "presets": []
+  "presets": [],
+  "noiseGates": [
+    {
+      "name": "Gate",
+      "tag": "NoiseGate1",
+      "channels": [
+        "Gate 1",
+        "Gate 2"
+      ]
+    },
+    {
+      "name": "Mic 1",
+      "tag": "NoiseGate2",
+      "channels": [
+        "Mic 1"
+      ]
+    },
+    {
+      "name": "Mic 2",
+      "tag": "NoiseGate3",
+      "channels": [
+        "Mic 2"
+      ]
+    },
+    {
+      "name": "Mic 3",
+      "tag": "NoiseGate4",
+      "channels": [
+        "Mic 3"
+      ]
+    },
+    {
+      "name": "Mic 4",
+      "tag": "NoiseGate5",
+      "channels": [
+        "Mic 4"
+      ]
+    }
+  ]
 }

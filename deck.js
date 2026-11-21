@@ -81,12 +81,16 @@ module.exports = function createDeck({ getConfig, getState, applyOps, getMeter, 
         };
       }
       case 'gate': {
-        const tag = T().noiseGate;
+        // target.gate = index into config.noiseGates (older layouts have none: the first gate)
+        const gates = cfg().noiseGates || [{ name: 'Gate', tag: T().noiseGate, channels: cfg().noiseGateChannels || ['Gate'] }];
+        const g = gates[Number(t.gate) || 0];
+        if (!g || !g.tag) return null;
+        const tag = g.tag;
         return {
-          name: 'Gate', sub: 'Threshold', unit: 'dBu', min: -60, max: 24,
+          name: /gate/i.test(g.name) || g.name.length > 8 ? g.name : `${g.name} gate`, sub: 'Threshold', unit: 'dBu', min: -60, max: 24,
           level: () => st(tag, 'threshold'),
           levelOps: (v) => [{ tag, attr: 'threshold', idx: [], value: v }],
-          meter: { tag, channels: (cfg().noiseGateChannels || []).map((_, i) => i + 1), gr: true },
+          meter: { tag, channels: (g.channels || ['']).map((_, i) => i + 1), gr: true },
         };
       }
       case 'allSources': {
@@ -160,7 +164,7 @@ module.exports = function createDeck({ getConfig, getState, applyOps, getMeter, 
       return { ...base, type: 'volume', dir: key.dir === 'down' ? 'down' : 'up', level: typeof lv === 'number' ? Math.round(lv * 10) / 10 : null, min: c.min, unit: c.unit || 'dB', muted: c.muted ? c.muted() : null };
     }
     if (key.type === 'meter') {
-      return { ...base, type: 'meter', meter: meterValues(c.meter), gr: !!(c.meter && c.meter.gr), muted: c.muted ? c.muted() : null, range: cfg().meter || { min: -60, max: 24, yellow: 0, red: 18 } };
+      return { ...base, sub: c.meter && c.meter.gr ? 'Reduction' : base.sub, type: 'meter', meter: meterValues(c.meter), gr: !!(c.meter && c.meter.gr), muted: c.muted ? c.muted() : null, range: cfg().meter || { min: -60, max: 24, yellow: 0, red: 18 } };
     }
     return null;
   }

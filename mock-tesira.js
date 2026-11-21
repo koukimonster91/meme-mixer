@@ -13,6 +13,10 @@ const blocks = {
   AudioMeter3: { type: 'meter', n: 2 }, AudioMeter4: { type: 'meter', n: 2 }, AudioMeter5: { type: 'meter', n: 2 },
   AudioMeter6: { type: 'meter', n: 2 }, AudioMeter7: { type: 'meter', n: 2 },
   NoiseGate1: { type: 'gate', n: 2, threshold: -40, attackTime: 5, releaseTime: 200, bypass: false },
+  NoiseGate2: { type: 'gate', n: 1, threshold: -45, attackTime: 2, releaseTime: 150, bypass: false },
+  NoiseGate3: { type: 'gate', n: 1, threshold: -45, attackTime: 2, releaseTime: 150, bypass: false },
+  NoiseGate4: { type: 'gate', n: 1, threshold: -45, attackTime: 2, releaseTime: 150, bypass: false },
+  NoiseGate5: { type: 'gate', n: 1, threshold: -45, attackTime: 2, releaseTime: 150, bypass: false },
   AecInput1: { type: 'aec', n: 12 },
 };
 for (const b of Object.values(blocks)) {
