@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 (2026-11-21)
+
+### Fixed
+- **Headphone master meters share one meter block.** The headphone master meters are all on **AudioMeter3**: Headphone 1 on channels 1–2, Headphone 2 on 3–4, Headphone 3 on 5–6, Headphone 4 on 7–8. Before, MemeMixer expected a separate meter block per output.
+- Settings has a **Channels (L, R)** box next to each output's master meter tag, so any output can use any pair of channels on any meter block.
+- If your meter tags were still the old defaults (AudioMeter3–7), they switch to the shared AudioMeter3 layout automatically. The USB Out meter is unchanged.
+
 ## 1.5.0 (2026-11-21)
 
 ### Added

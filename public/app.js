@@ -1187,6 +1187,9 @@ function renderSettings() {
   };
   const masters = c.outputs.map((o) => [`${o.name} master (Level)`, tagInput(c.tags.masters[o.master] || '')]);
   const masterMeters = c.outputs.map((o) => [`${o.name} master meter`, tagInput((c.tags.masterMeters || [])[o.master] || '')]);
+  // L/R channels of each output on its meter block (several outputs can share one block)
+  const meterChans = c.outputs.map((o) => h('input', { class: 'input mono', value: (o.masterMeterChannels || [1, 2]).join(', '), title: 'Left, right channel on the meter block', style: { maxWidth: '110px' } }));
+  const parseChans = (v) => { const n = String(v).split(/[\s,;]+/).map(Number).filter((x) => Number.isInteger(x) && x > 0 && x <= 64).slice(0, 2); return n.length ? n : [1, 2]; };
   const gates = gateList();
   const gateFields = gates.map((g) => [`${g.name} noise gate`, tagInput(g.tag || '')]);
   const save = async () => {
@@ -1197,8 +1200,9 @@ function renderSettings() {
     t.masters = m;
     t.masterMeters = mm;
     const noiseGates = gates.map((g, i) => ({ ...g, tag: gateFields[i][1].value.trim() }));
+    const outputs = c.outputs.map((o, i) => ({ ...o, masterMeterChannels: parseChans(meterChans[i].value) }));
     if (noiseGates[0]) t.noiseGate = noiseGates[0].tag;
-    await post('/api/config', { config: { tesira: { host: host.value.trim(), port: Number(port.value) || 23 }, tags: t, noiseGates }, reconnect: true });
+    await post('/api/config', { config: { tesira: { host: host.value.trim(), port: Number(port.value) || 23 }, tags: t, noiseGates, outputs }, reconnect: true });
     toast('Saved — reconnecting');
   };
   const field = ([label, input]) => h('div', { class: 'field' }, h('label', {}, label), input);
@@ -1245,7 +1249,7 @@ function renderSettings() {
     h('div', { class: 'card' }, h('h2', {}, 'Instance tags'), h('p', { class: 'hint' }, S.aliases.length ? `Pick from the ${S.aliases.length} tags reported by the Tesira. Amber means the tag isn't on the device.` : 'Connect to the Tesira to pick tags from its list.'),
       ...Object.values(tags).map((t) => h('div', { class: 'row' }, field(t))),
       ...masters.map((t) => h('div', { class: 'row' }, field(t))),
-      ...masterMeters.map((t) => h('div', { class: 'row' }, field(t))),
+      ...masterMeters.map((t, i) => h('div', { class: 'row' }, field(t), h('div', { class: 'field', style: { flex: '0 0 110px', minWidth: '90px' } }, h('label', {}, 'Channels (L, R)'), meterChans[i]))),
       ...gateFields.map((t) => h('div', { class: 'row' }, field(t))),
       h('div', { class: 'row', style: { marginTop: '16px' } }, h('button', { class: 'btn primary', onclick: save }, 'Save tags'))),
     h('div', { class: 'card' }, h('h2', {}, 'Tesira design file'),
