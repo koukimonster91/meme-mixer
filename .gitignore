@@ -8,3 +8,4 @@ dist/
 streamdeck.json
 security.json
 security.json.tmp
+.wrangler/
