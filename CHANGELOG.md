@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.2 (2026-11-21)
+
+### Fixed
+- **USB Out master meter is on AudioMeter3 too,** on channels 9–10. It switches over automatically from the 1.5.1 default (AudioMeter7) and from older defaults. Meter tags you changed yourself are left alone.
+
 ## 1.5.1 (2026-11-21)
 
 ### Fixed

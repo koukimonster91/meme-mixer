@@ -38,7 +38,7 @@ const DEFAULT_CONFIG = {
     masters: ['Level2', 'Level3', 'Level4', 'Level5', 'Level6'],
     // Peak meter for each output master (same order as masters). Blank = no meter. Several outputs
     // can share one meter block; each output's `masterMeterChannels` picks its L/R channels on it.
-    masterMeters: ['AudioMeter3', 'AudioMeter3', 'AudioMeter3', 'AudioMeter3', 'AudioMeter7'],
+    masterMeters: ['AudioMeter3', 'AudioMeter3', 'AudioMeter3', 'AudioMeter3', 'AudioMeter3'],
   },
   // Mixer inputs. `inputs` are matrix-mixer input numbers; `meter` are channels
   // on the input meter (the Peak Meter after the Input Master).
@@ -56,7 +56,7 @@ const DEFAULT_CONFIG = {
     { name: 'Headphone 2', mixerOutputs: [3, 4], master: 1, masterMeterChannels: [3, 4], sources: ['Mic 1', 'Mic 2', 'Mic 3', 'Mic 4', 'TV/AUX', 'PC'] },
     { name: 'Headphone 3', mixerOutputs: [5, 6], master: 2, masterMeterChannels: [5, 6], sources: ['Mic 1', 'Mic 2', 'Mic 3', 'Mic 4', 'TV/AUX', 'PC'] },
     { name: 'Headphone 4', mixerOutputs: [7, 8], master: 3, masterMeterChannels: [7, 8], sources: ['Mic 1', 'Mic 2', 'Mic 3', 'Mic 4', 'TV/AUX', 'PC'] },
-    { name: 'USB Out', mixerOutputs: [9, 10], master: 4, masterMeterChannels: [1, 2], sources: ['Mic 1', 'Mic 2', 'Mic 3', 'Mic 4', 'TV/AUX'] },
+    { name: 'USB Out', mixerOutputs: [9, 10], master: 4, masterMeterChannels: [9, 10], sources: ['Mic 1', 'Mic 2', 'Mic 3', 'Mic 4', 'TV/AUX'] },
   ],
   // Input Master channels (Level block) and their meter channel.
   inputChannels: [
@@ -101,9 +101,15 @@ function loadConfig() {
   if (Array.isArray(savedMeters) && JSON.stringify(savedMeters) === JSON.stringify(OLD_METERS) &&
       !(raw.outputs || []).some((o) => o && o.masterMeterChannels)) {
     // 1.5.0 and earlier assumed one meter block per output. Untouched defaults move to the shared
-    // AudioMeter3 (headphones on channels 1-2, 3-4, 5-6, 7-8); the USB Out meter stays as it was.
-    cfg.tags.masterMeters = cfg.outputs.map((o, i) => (i < 4 ? 'AudioMeter3' : OLD_METERS[o.master] || ''));
-    cfg.outputs.forEach((o, i) => { o.masterMeterChannels = i < 4 ? [i * 2 + 1, i * 2 + 2] : [1, 2]; });
+    // AudioMeter3: Headphone 1-4 on channels 1-2, 3-4, 5-6, 7-8 and USB Out on 9-10.
+    cfg.tags.masterMeters = cfg.outputs.map(() => 'AudioMeter3');
+    cfg.outputs.forEach((o, i) => { o.masterMeterChannels = [i * 2 + 1, i * 2 + 2]; });
+    try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch {}
+  } else if (Array.isArray(savedMeters) && cfg.outputs[4] && savedMeters[cfg.outputs[4].master] === 'AudioMeter7' &&
+      JSON.stringify(cfg.outputs[4].masterMeterChannels) === '[1,2]' && savedMeters.filter((t) => t === 'AudioMeter3').length >= 4) {
+    // 1.5.1 left USB Out on AudioMeter7 channels 1-2; it shares AudioMeter3 too (channels 9-10).
+    cfg.tags.masterMeters[cfg.outputs[4].master] = 'AudioMeter3';
+    cfg.outputs[4].masterMeterChannels = [9, 10];
     try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch {}
   }
   if (!Array.isArray(raw.noiseGates)) {

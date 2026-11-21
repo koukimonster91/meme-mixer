@@ -26,7 +26,7 @@
       "AudioMeter3",
       "AudioMeter3",
       "AudioMeter3",
-      "AudioMeter7"
+      "AudioMeter3"
     ]
   },
   "sources": [
@@ -185,8 +185,8 @@
         "TV/AUX"
       ],
       "masterMeterChannels": [
-        1,
-        2
+        9,
+        10
       ]
     }
   ],
