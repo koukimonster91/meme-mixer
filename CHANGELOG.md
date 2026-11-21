@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1 (2026-11-21)
+
+### Added
+- **Tesira design file download:** Settings has a new **Tesira design file** card. It downloads the Tesira Designer file MemeMixer is set up for (`MM26_Tesira_1b.tmf`), which is kept in the GitHub project's `tesira/` folder, and links to all versions there.
+
 ## 1.4.0 (2026-11-21)
 
 ### Fixed

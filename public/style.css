@@ -113,6 +113,7 @@ body.demo .conn-text { color: #ffb547; }
   transition: background 0.15s, border-color 0.15s, transform 0.05s;
   white-space: nowrap;
 }
+a.btn { text-decoration: none; font-size: 13.5px; }
 .btn:hover { background: rgba(255, 255, 255, 0.1); }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: linear-gradient(135deg, #5b8cff, #4a73e8); border-color: transparent; box-shadow: 0 6px 20px rgba(91, 140, 255, 0.3); }
