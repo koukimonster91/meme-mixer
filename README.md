@@ -63,7 +63,7 @@ On first run, open **Settings**:
 | Noise Gate | Each noise gate (TV/AUX on NoiseGate1, Mic 1–4 on NoiseGate2–5 by default): threshold, attack, release, bypass, and live gain-reduction meters. |
 | Extras | Mute all outputs, mute one mic in every mix, copy a mix between outputs, scenes (snapshots saved on this PC), Tesira preset recall, phantom power and mic gain per AEC input, and a TTP command console. |
 | Stream Deck | Lay out the keys of the MemeMixer Stream Deck plugin: mutes, volume up/down, VU meters, scenes and page keys, with a live preview. |
-| Settings | Connection settings, network scan, auto-connect, instance tags, phone QR code and the event log. |
+| Settings | Connection settings, network scan, auto-connect, instance tags, phone QR code with connection code, paired devices, and the event log. |
 
 Every fader works the same way:
 - Drag it. Hold **Shift** for fine moves.
@@ -97,4 +97,23 @@ If one browser on the phone says "This site can't be reached" but another browse
 - **Android:** Settings → Apps → Chrome (or the browser you use) → Permissions → **Nearby devices** / **Local network**. Then close the browser fully and reopen it.
 - **iPhone:** Settings → Privacy & Security → **Local Network**, then turn the browser on.
 
-To make it this-PC-only again, set `"web": { "host": "127.0.0.1" }` in `config.json`. Anyone on the network who opens the address can control the mixer.
+### Connecting a device the first time (connection code)
+
+A phone or tablet must be paired once before it can use the mixer. No accounts are involved.
+1. On the MemeMixer PC, open **Settings → Phone & tablet access**. A 6-digit **connection code** is shown next to the QR code. It changes every 30 seconds.
+2. On the phone, scan the QR code or open the address. It shows **Connect this device**. Type the code; you can also give the device a name.
+3. That browser on that device stays connected. It needs a code again only if it is removed, its cookies are cleared, or it isn't used for 90 days. On iPhone, a Home-screen app may ask once more.
+
+How it's protected:
+- **This PC is always allowed.** That includes the tray app and the Stream Deck plugin. Every other device needs the code.
+- **Codes only exist while the Settings card is open on the PC.** Nobody can pair while the PC isn't showing the code. Each code works once.
+- **Wrong codes are limited.** After 5 wrong codes, an address is blocked for 5 minutes. After 20 wrong codes from anywhere within 10 minutes, all pairing pauses. Both are noted in the event log.
+- **Device keys are stored safely.** A paired device holds a random key in an HttpOnly cookie. Only a hash of it is stored, in `security.json`.
+- **Paired devices** are listed in Settings, with **Remove** / **Remove all**. A removed device is disconnected at once. On a phone, Settings has **Disconnect this device**.
+- **Allow phones & tablets** switch: turn it off to refuse every other device, paired or not.
+- **Settings only this PC can change:** the code, the device list, and the web server settings.
+- **Requests from other websites are refused** (cross-site requests and DNS rebinding), and pages are sent with strict browser security headers.
+
+The app only accepts addresses typed as an IP, `localhost`, or this PC's name. To use another network name, add it to `"web": { "allowedHosts": ["mixer.home"] }` in `config.json`.
+
+To make it this-PC-only, switch off **Allow phones & tablets**, or set `"web": { "host": "127.0.0.1" }` in `config.json`.

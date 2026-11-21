@@ -24,7 +24,7 @@ New-Item -ItemType Directory -Force $build, $dist | Out-Null
 # 1. Web app files -> build\app.zip (no user settings, scenes or test tools)
 $stage = Join-Path $build 'app'
 New-Item -ItemType Directory -Force $stage | Out-Null
-foreach ($f in 'server.js', 'tesira.js', 'discover.js', 'deck.js', 'mock-tesira.js') { Copy-Item (Join-Path $root $f) $stage }
+foreach ($f in 'server.js', 'tesira.js', 'discover.js', 'auth.js', 'deck.js', 'mock-tesira.js') { Copy-Item (Join-Path $root $f) $stage }
 Set-Content (Join-Path $stage 'VERSION') $version -NoNewline
 Copy-Item (Join-Path $root 'public') (Join-Path $stage 'public') -Recurse
 Add-Type -AssemblyName System.IO.Compression.FileSystem

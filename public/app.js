@@ -60,6 +60,7 @@ const fmtDb = (v, min) => (v == null ? '—' : v <= min + 0.05 ? '-inf' : (v > 0
 async function post(url, data) {
   try {
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) });
+    if (r.status === 401) { location.replace('/pair'); return { ok: false }; } // this device was removed
     return await r.json();
   } catch { toast('Server not reachable'); return { ok: false }; }
 }
@@ -1272,16 +1273,107 @@ function renderSettings() {
             return t.el;
           })())
         : h('p', { class: 'hint', style: { marginBottom: 0 } }, S.demo ? 'Started with start-demo.bat. Close it and use start.bat for the real Tesira.' : 'Available in the installed app (MemeMixer.exe). From source, run start-demo.bat.')),
-    h('div', { class: 'card' }, h('h2', {}, 'Phone & tablet access'),
-      S.networkUrls.length
-        ? [h('p', { class: 'hint' }, 'On a phone or tablet on the same Wi-Fi / network, scan the QR code with the camera or open this address in the browser:'),
-           ...S.networkUrls.map((u) => h('div', { class: 'qr-item' },
-             window.QR ? h('div', { class: 'qr', html: QR.svg(u) }) : null,
-             h('div', { class: 'list-item' }, h('span', { class: 'grow mono-url' }, u),
-               h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(u).then(() => toast('Copied'), () => {}); } }, 'Copy')))),
-           h('p', { class: 'hint', style: { marginTop: '12px', marginBottom: 0 } }, 'Tip: in the phone browser, use "Add to Home screen" to open it like an app.')]
-        : h('p', { class: 'hint' }, 'Only this PC can open the mixer. Set "web": { "host": "0.0.0.0" } in config.json and restart to allow phones on your network.')),
+    phoneAccessCard(),
     h('div', { class: 'card wide' }, h('h2', {}, 'Event log'), h('p', { class: 'hint' }, 'Connection events and errors from the Tesira. Channel routing (which mixer inputs and outputs each fader uses) is in config.json.'), logBox)));
+}
+
+// Settings → Phone & tablet access. On the PC: the QR code, the 6-digit pairing code (new every
+// 30 s, only shown here) and the paired devices. On a phone: which device this is.
+function phoneAccessCard() {
+  const card = h('div', { class: 'card' }, h('h2', {}, 'Phone & tablet access'));
+  const ago = (iso) => {
+    const s = (Date.now() - Date.parse(iso)) / 1000;
+    return s < 120 ? 'just now' : s < 7200 ? `${Math.round(s / 60)} min ago` : s < 172800 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`;
+  };
+  if (!S.local) {
+    card.append(
+      h('p', { class: 'hint' }, `This device is connected${S.device ? ` as "${S.device.name}"` : ''}. Paired devices are managed in Settings on the MemeMixer PC.`),
+      h('div', { class: 'row' }, h('button', { class: 'btn danger', onclick: async () => {
+        if (!confirm('Disconnect this device? You will need a new code from the PC to connect again.')) return;
+        await post('/api/device/forget');
+        location.replace('/pair');
+      } }, 'Disconnect this device')));
+    return card;
+  }
+  if (!S.networkUrls.length) {
+    card.append(h('p', { class: 'hint' }, 'Only this PC can open the mixer. Set "web": { "host": "0.0.0.0" } in config.json and restart to allow phones on your network.'));
+    return card;
+  }
+  let sec = { remoteAccess: true, pairing: null, devices: [] };
+  const access = Toggle('Allow phones & tablets', () => sec.remoteAccess, async (v) => {
+    sec.remoteAccess = v; draw();
+    await post('/api/security/remote-access', { on: v });
+    tick();
+  });
+  const codeEl = h('div', { class: 'code' }, '······');
+  const bar = h('i', { style: { width: '100%' } });
+  const codeSub = h('div', { class: 'code-sub' });
+  const pairBox = h('div', { class: 'pair-box' },
+    h('div', {}, h('div', { class: 'code-sub', style: { marginTop: 0, marginBottom: '6px' } }, 'Connection code'), codeEl, h('div', { class: 'pair-bar' }, bar), codeSub),
+    h('p', { class: 'hint', style: { margin: 0, flex: '1 1 180px' } }, 'A phone or tablet connecting for the first time asks for this code. It changes every 30 seconds and works once.'));
+  const qrs = h('div', {}, ...S.networkUrls.map((u) => h('div', { class: 'qr-item' },
+    window.QR ? h('div', { class: 'qr', html: QR.svg(u) }) : null,
+    h('div', { class: 'list-item' }, h('span', { class: 'grow mono-url' }, u),
+      h('button', { class: 'btn sm', onclick: () => { navigator.clipboard?.writeText(u).then(() => toast('Copied'), () => {}); } }, 'Copy')))));
+  const devBox = h('div', {});
+  const onBox = h('div', {},
+    h('p', { class: 'hint' }, 'On a phone or tablet on the same Wi-Fi / network, scan the QR code with the camera or open this address in the browser, then type the code:'),
+    pairBox, qrs,
+    h('p', { class: 'hint', style: { marginTop: '4px' } }, 'Tip: in the phone browser, use "Add to Home screen" to open it like an app. (On iPhone, a Home-screen app may ask for a code once more.)'),
+    devBox);
+  const offNote = h('p', { class: 'hint', style: { marginBottom: 0 } }, 'Off: only this PC can use MemeMixer. Phones and tablets, paired or not, are refused.');
+  card.append(h('div', { class: 'row', style: { marginBottom: '12px' } }, access.el), onBox, offNote);
+
+  let devKey = '';
+  function draw() {
+    access.update();
+    onBox.hidden = !sec.remoteAccess;
+    offNote.hidden = !!sec.remoteAccess;
+    const pr = sec.pairing;
+    if (pr) {
+      codeEl.textContent = `${pr.code.slice(0, 3)} ${pr.code.slice(3)}`;
+      const left = Math.max(0, pr.expiresIn - (Date.now() - pr.at));
+      bar.style.width = `${(left / pr.period) * 100}%`;
+      codeSub.textContent = `New code in ${Math.ceil(left / 1000)} s`;
+    }
+    const k = JSON.stringify(sec.devices.map((d) => [d.id, d.name, d.ip, Math.round((Date.now() - Date.parse(d.lastSeen)) / 60000)]));
+    if (k === devKey) return;
+    devKey = k;
+    devBox.replaceChildren(
+      h('h2', { style: { fontSize: '13px', marginTop: '6px' } }, `Paired devices (${sec.devices.length})`),
+      sec.devices.length
+        ? h('div', { class: 'device-list' }, ...sec.devices.map((d) => h('div', { class: 'list-item' },
+            h('span', { class: 'grow' }, h('b', {}, d.name), ' ', h('span', { class: 'meta' }, `${d.ip} · used ${ago(d.lastSeen)}`)),
+            h('button', { class: 'btn sm danger', onclick: async () => {
+              if (!confirm(`Remove "${d.name}"? It will need a new code to connect again.`)) return;
+              await post('/api/security/remove', { id: d.id }); tick();
+            } }, 'Remove'))),
+            sec.devices.length > 1 ? h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn sm danger', onclick: async () => {
+              if (!confirm('Remove all paired devices? Each will need a new code to connect again.')) return;
+              await post('/api/security/remove-all'); tick();
+            } }, 'Remove all')) : null)
+        : h('p', { class: 'hint', style: { marginBottom: 0 } }, 'None yet.'));
+  }
+  // Ask for the code about once a second while this card is on screen. The server only accepts
+  // codes while this is happening, so nothing can pair when nobody has this page open.
+  let busy = false, last = 0;
+  async function tick() {
+    if (busy) return;
+    busy = true;
+    try {
+      const r = await fetch('/api/security', { cache: 'no-store' });
+      if (r.ok) { sec = await r.json(); if (sec.pairing) sec.pairing.at = Date.now(); last = Date.now(); }
+    } catch {}
+    busy = false;
+    draw();
+  }
+  const timer = setInterval(() => {
+    if (!card.isConnected) return clearInterval(timer);
+    if (document.hidden) return; // no code while the page is in the background
+    if (Date.now() - last > 900) tick(); else draw();
+  }, 250);
+  tick();
+  return card;
 }
 
 // ------------------------------------------------------------------ connection UI
@@ -1299,7 +1391,10 @@ function updateBanner() {
 }
 
 async function load() {
-  const r = await fetch('/api/state').then((x) => x.json());
+  const resp = await fetch('/api/state');
+  if (resp.status === 401) return location.replace('/pair');
+  const r = await resp.json();
+  S.local = !!r.local; S.device = r.device;
   S.config = r.config; S.state = r.state; S.status = r.status; S.aliases = r.aliases; S.snapshots = r.snapshots; S.log = r.log; S.networkUrls = r.networkUrls || []; S.scan = r.scan || S.scan; S.version = r.version;
   S.demo = !!r.demo; S.canSwitchDemo = !!r.canSwitchDemo;
   document.body.classList.toggle('demo', S.demo);
@@ -1327,7 +1422,11 @@ function connectEvents() {
   es.addEventListener('scan',(e) => { S.scan = JSON.parse(e.data); for (const c of comps) c.scan && c.scan(); });
   es.addEventListener('snapshots',(e) => { S.snapshots = JSON.parse(e.data); for (const c of comps) c.snaps && c.snaps(); });
   es.addEventListener('log', (e) => { const line = JSON.parse(e.data); S.log.push(line); for (const c of comps) c.log && c.log(line); });
-  es.onerror = () => { S.status = { ...S.status, ready: false, connected: false }; updateBanner(); };
+  es.onerror = () => {
+    S.status = { ...S.status, ready: false, connected: false }; updateBanner();
+    // removed on the PC? then go back to the pairing page
+    if (!S.local) fetch('/api/pair/status').then((r) => r.json()).then((d) => { if (!d.paired) location.replace('/pair'); }).catch(() => {});
+  };
 }
 
 window.addEventListener('hashchange', renderPage);

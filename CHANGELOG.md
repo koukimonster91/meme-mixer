@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.6.0 (2026-11-21)
+
+### Added
+- **Connection code for phones and tablets.** A device connecting for the first time shows **Connect this device** and asks for a 6-digit code.
+  - The code is shown on the PC next to the QR code, in **Settings → Phone & tablet access**.
+  - It changes every 30 seconds and works once.
+  - After that, the device stays connected. No accounts.
+- **Paired devices list** on the PC, with **Remove** and **Remove all**. A removed device is disconnected immediately. A phone can also **Disconnect this device** itself.
+- **Allow phones & tablets** switch, to refuse every other device, paired or not.
+
+### Security
+- Only devices paired with a code can reach the mixer, its live updates or its controls. This PC is always allowed, including the tray app and the Stream Deck plugin.
+- Codes only exist while the Phone & tablet card is open on the PC.
+- Wrong codes are rate limited: 5 per address, then a 5-minute block; 20 in total, then pairing pauses.
+- Device keys are stored only as hashes.
+- Requests from other websites and DNS-rebinding tricks are refused. Pages carry strict browser security headers (content policy, no framing, no sniffing).
+- Only this PC can change the pairing, the device list, and the web server settings.
+
 ## 1.5.3 (2026-11-21)
 
 ### Changed

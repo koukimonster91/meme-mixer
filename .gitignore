@@ -6,3 +6,5 @@ snapshots.demo.json
 build/
 dist/
 streamdeck.json
+security.json
+security.json.tmp

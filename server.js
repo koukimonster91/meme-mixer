@@ -8,6 +8,7 @@ const os = require('os');
 const { Tesira } = require('./tesira');
 const discover = require('./discover');
 const createDeck = require('./deck');
+const { createAuth, parseCookies } = require('./auth');
 
 const ROOT = __dirname;
 // MIXER_DATA: folder for settings and scenes. The installed (tray) version keeps
@@ -429,13 +430,91 @@ function json(res, obj, code = 200) {
   res.end(JSON.stringify(obj));
 }
 
+// ---------------------------------------------------------------- security (see auth.js)
+const auth = createAuth({ dataDir: DATA, log: (m) => addLog(m), extraHosts: () => (config.web && config.web.allowedHosts) || [] });
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+};
+// What a device that isn't paired yet may load: the pairing page and what it needs.
+const PAIR_FILES = new Set(['/pair', '/pair.html', '/pair.js', '/style.css', '/logo.png', '/favicon.ico']);
+// Close the live streams of a removed device so it stops getting updates at once.
+function dropDevice(id) {
+  for (const set of [clients, deckClients]) for (const r of set) if (id === '*' ? r.deviceId : r.deviceId === id) r.end();
+}
+
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://x');
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) res.setHeader(k, v);
+  let url;
+  try { url = new URL(req.url, 'http://x'); } catch { res.writeHead(400); return res.end(); }
   const p = url.pathname;
+
+  // Only IP addresses and this PC's name (DNS rebinding), and no requests from other websites (CSRF).
+  if (!auth.hostOk(req)) { res.writeHead(421, { 'Content-Type': 'text/plain' }); return res.end('MemeMixer: open it by IP address or this PC\'s name.'); }
+  const isApi = p.startsWith('/api/') || p === '/events' || p === '/deck/events';
+  if ((req.method !== 'GET' && req.method !== 'HEAD') || isApi) {
+    if (!auth.sameOrigin(req)) return json(res, { ok: false, error: 'cross-site request refused' }, 403);
+  }
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'POST') { res.writeHead(405); return res.end(); }
+
+  // Who is it: this PC, a paired device, or an unknown device.
+  const local = auth.isLocal(req);
+  const device = local ? null : auth.deviceFor(req);
+  if (!local) {
+    if (!auth.remoteAccess()) {
+      if (isApi) return json(res, { ok: false, error: 'remote access off' }, 403);
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end('<!doctype html><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;background:#090b10;color:#ddd;padding:24px"><h2>MemeMixer</h2><p>Phone &amp; tablet access is switched off. Turn it on in Settings on the MemeMixer PC.</p>');
+    }
+    if (p === '/api/pair' && req.method === 'POST') {
+      const b = await body(req);
+      const r = auth.pair(req, b.code, b.name);
+      if (r.ok) res.setHeader('Set-Cookie', r.cookie);
+      return json(res, { ok: r.ok, error: r.error, wait: r.wait }, r.ok ? 200 : r.error === 'wrong' || r.error === 'closed' ? 400 : 429);
+    }
+    if (!device) {
+      if (p === '/api/pair/status') return json(res, { paired: false, open: auth.pairingOpen() });
+      if (isApi || req.method !== 'GET') return json(res, { ok: false, error: 'not paired' }, 401);
+      if (!PAIR_FILES.has(p)) { res.writeHead(302, { Location: '/pair', 'Cache-Control': 'no-store' }); return res.end(); }
+    }
+  }
+  if (p === '/pair' || p === '/pair.html') {
+    if (local || device) { res.writeHead(302, { Location: '/' }); return res.end(); }
+    return serveFile(res, path.join(PUBLIC, 'pair.html'));
+  }
+  if (p === '/api/pair/status') return json(res, { paired: true });
+  if (p === '/api/device/forget' && req.method === 'POST' && device) {
+    auth.remove(device.id); dropDevice(device.id);
+    res.setHeader('Set-Cookie', auth.clearCookie());
+    return json(res, { ok: true });
+  }
+  if (device && req.method === 'GET' && !isApi && (p === '/' || p === '/index.html')) {
+    res.setHeader('Set-Cookie', `mm_device=${parseCookies(req.headers.cookie).mm_device}; Path=/; Max-Age=${365 * 24 * 3600}; HttpOnly; SameSite=Strict`); // keep the cookie fresh
+  }
+
+  // Security settings: this PC only.
+  if (p.startsWith('/api/security')) {
+    if (!local) return json(res, { ok: false, error: 'only on the MemeMixer PC' }, 403);
+    if (p === '/api/security' && req.method === 'GET') {
+      return json(res, { remoteAccess: auth.remoteAccess(), pairing: auth.remoteAccess() ? auth.currentCode() : null, devices: auth.devices() });
+    }
+    if (req.method === 'POST') {
+      const b = await body(req);
+      if (p === '/api/security/remove') { const ok = auth.remove(String(b.id || '')); dropDevice(String(b.id || '')); return json(res, { ok }); }
+      if (p === '/api/security/remove-all') { const n = auth.removeAll(); dropDevice('*'); return json(res, { ok: true, removed: n }); }
+      if (p === '/api/security/remote-access') { auth.setRemoteAccess(!!b.on); if (!b.on) dropDevice('*'); broadcast('security', { remoteAccess: !!b.on }); return json(res, { ok: true }); }
+    }
+    return json(res, { error: 'not found' }, 404);
+  }
 
   if (p === '/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
     res.write(`event: hello\ndata: {}\n\n`);
+    res.deviceId = device && device.id;
     clients.add(res);
     req.on('close', () => clients.delete(res));
     return;
@@ -443,6 +522,7 @@ const server = http.createServer(async (req, res) => {
   if (p === '/deck/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
     res.write(`event: deck\ndata: ${deckPayload()}\n\n`);
+    res.deviceId = device && device.id;
     deckClients.add(res);
     const isPlugin = url.searchParams.get('client') === 'plugin';
     if (isPlugin) pluginClients++;
@@ -453,7 +533,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, { layout: deckLayout || createDeck.defaultLayout(config), custom: !!deckLayout, connected: pluginClients });
   }
   if (p === '/api/state' && req.method === 'GET') {
-    return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION, demo: DEMO, canSwitchDemo: TRAY });
+    return json(res, { config, state: Object.fromEntries(state), status: status(), aliases, log, snapshots: Object.keys(snapshots), networkUrls: networkUrls(), scan: lastScan, version: VERSION, demo: DEMO, canSwitchDemo: TRAY, local, device: device ? { id: device.id, name: device.name } : null });
   }
   if (req.method === 'POST') {
     const b = await body(req);
@@ -461,6 +541,8 @@ const server = http.createServer(async (req, res) => {
       case '/api/set':
         return json(res, { results: await applyOps(b.ops) });
       case '/api/config': {
+        // web server settings (address, port, allowed names) can only be changed on this PC
+        if (!local && b.config) delete b.config.web;
         const next = deepMerge(config, b.config || {});
         const reconnect = next.tesira.host !== config.tesira.host || Number(next.tesira.port) !== Number(config.tesira.port);
         config = next;
@@ -530,14 +612,22 @@ const server = http.createServer(async (req, res) => {
   }
 
   // static files
-  const file = path.normalize(path.join(PUBLIC, p === '/' ? 'index.html' : p));
-  if (!file.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
+  let rel;
+  try { rel = decodeURIComponent(p === '/' ? '/index.html' : p); } catch { res.writeHead(400); return res.end(); }
+  const file = path.normalize(path.join(PUBLIC, rel));
+  if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
+  serveFile(res, file);
+});
+function serveFile(res, file) {
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(data);
   });
-});
+}
+server.maxConnections = 200;
+server.headersTimeout = 15000;
+server.requestTimeout = 0; // live update streams stay open
 
 const webHost = process.env.WEB_HOST || config.web.host;
 const webPort = Number(process.env.WEB_PORT || config.web.port);

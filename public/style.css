@@ -487,3 +487,28 @@ a.btn { text-decoration: none; font-size: 13.5px; }
 .gate-tabs { margin-bottom: 16px; }
 .gate-byp { margin-left: 8px; padding: 1px 7px; border-radius: 8px; font-size: 10.5px; font-weight: 700; color: #1a1205; background: #ffb547; }
 .gate-byp[hidden] { display: none; }
+
+/* ---------- pairing page (devices that aren't paired yet) */
+body.pair-page { overflow: auto; display: flex; align-items: center; justify-content: center; min-height: 100%; padding: 16px; }
+.pair-card { width: 100%; max-width: 380px; text-align: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 22px; }
+.pair-logo { width: 64px; height: 64px; object-fit: contain; }
+.pair-card h1 { font-size: 20px; margin: 10px 0 6px; letter-spacing: -0.01em; }
+.pair-hint, .pair-foot { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+.pair-foot { margin: 16px 0 0; font-size: 12px; color: var(--faint); }
+.pair-code { width: 100%; height: 64px; text-align: center; font: 600 34px/1 var(--mono); letter-spacing: 0.3em; padding-left: 0.3em;
+  background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line-2); border-radius: 14px; outline: none; }
+.pair-code:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.2); }
+.pair-label { display: block; text-align: left; color: var(--muted); font-size: 12px; margin: 16px 0 6px; }
+.pair-card .input { width: 100%; }
+.pair-btn { width: 100%; margin-top: 16px; height: 44px; }
+.pair-msg { min-height: 1.4em; margin: 14px 0 0; font-size: 13px; }
+.pair-msg.bad { color: var(--amber); }
+.pair-msg.ok { color: var(--accent-2); }
+
+/* ---------- pairing code in Settings */
+.pair-box { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; border-radius: 14px; background: rgba(91, 140, 255, 0.08); border: 1px solid rgba(91, 140, 255, 0.25); }
+.pair-box .code { font: 600 32px/1 var(--mono); letter-spacing: 0.18em; color: var(--text); }
+.pair-box .code-sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.pair-bar { height: 4px; border-radius: 2px; background: var(--line-2); overflow: hidden; margin-top: 8px; width: 180px; }
+.pair-bar > i { display: block; height: 100%; background: var(--accent-grad); transition: width 0.25s linear; }
+.device-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }

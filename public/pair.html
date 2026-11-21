@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MemeMixer · Connect this device</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta name="theme-color" content="#090b10">
+</head>
+<body class="pair-page">
+  <main class="pair-card">
+    <img class="pair-logo" src="logo.png" alt="MemeMixer logo">
+    <h1>Connect this device</h1>
+    <p class="pair-hint">On the MemeMixer PC, open <b>Settings → Phone &amp; tablet access</b>. Type the 6-digit code shown there, next to the QR code.</p>
+    <form id="pairForm" autocomplete="off">
+      <input id="code" class="pair-code" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="one-time-code" placeholder="000000" aria-label="6-digit code" autofocus>
+      <label class="pair-label" for="name">Device name (optional)</label>
+      <input id="name" class="input" maxlength="40" placeholder="e.g. Sam's phone">
+      <button class="btn primary pair-btn" id="go" type="submit">Connect</button>
+    </form>
+    <p class="pair-msg" id="msg" role="status"></p>
+    <p class="pair-foot">The code changes every 30 seconds. You only need it the first time on this device and browser.</p>
+  </main>
+  <script src="pair.js"></script>
+</body>
+</html>
