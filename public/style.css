@@ -465,6 +465,7 @@ body.demo .conn-text { color: #ffb547; }
 .deck-key:hover { border-color: var(--line-2); }
 .deck-key:active { transform: scale(0.97); }
 .deck-key.sel { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.6); }
+.deck-key .plus[hidden] { display: none; }
 .deck-key .plus { position: absolute; inset: 0; display: grid; place-items: center; color: #3a4150; font-size: 30px; font-weight: 300; }
 .deck-key.empty:hover .plus { color: var(--muted); }
 .deck-side { display: flex; flex-direction: column; gap: 18px; }

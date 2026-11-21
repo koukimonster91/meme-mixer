@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 (2026-11-20)
+
+### Fixed
+- **Stream Deck page buttons flickered and ignored clicks:** the key preview rebuilt all 15 keys about 10 times a second, because of the live meters. The keys now stay in place and only their pictures update, so hover is steady and one click works.
+
 ## 1.2.1 (2026-11-20)
 
 ### Changed

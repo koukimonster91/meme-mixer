@@ -902,29 +902,40 @@ function renderDeck() {
     syncName(); // keep the page-name box in step with the selected tab
   }
 
+  // The 15 key buttons are made once and then only updated. The preview refreshes
+  // about 10 times a second (meters), and rebuilding the buttons on every refresh made
+  // them flicker on hover and swallowed clicks.
+  const keyEls = Array.from({ length: 15 }, (_, i) => {
+    const img = h('img', { alt: '', draggable: 'false' });
+    const plus = h('span', { class: 'plus' }, '+');
+    const el = h('button', { class: 'deck-key', draggable: 'true', onclick: () => { sel = i; drawGrid(); drawEditor(); } }, img, plus);
+    el.addEventListener('dragstart', () => { dragFrom = i; });
+    el.addEventListener('dragover', (e) => e.preventDefault());
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (dragFrom == null || dragFrom === i) return;
+      const p = layout.pages[pg];
+      p.keys = Array.from({ length: 15 }, (_, j) => (p.keys || [])[j] || null);
+      [p.keys[dragFrom], p.keys[i]] = [p.keys[i], p.keys[dragFrom]];
+      sel = i; dragFrom = null; save(); drawGrid(); drawEditor();
+    });
+    grid.append(el);
+    return { el, img, plus, svg: null };
+  });
+
   function drawGrid() {
     if (!layout) return;
     const views = live && live.pages[pg] ? live.pages[pg].keys : [];
-    grid.replaceChildren(...Array.from({ length: 15 }, (_, i) => {
-      const v = views[i] || null;
+    keyEls.forEach((ke, i) => {
       const k = keyAt(i);
       // Until the server has the new layout, show an empty key rather than a stale one.
-      const shown = k ? v : null;
-      const img = h('img', { alt: '', draggable: 'false', src: 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(DeckRender.renderKey(shown)) });
-      const el = h('button', { class: `deck-key ${sel === i ? 'sel' : ''} ${k ? '' : 'empty'}`, draggable: 'true', title: k ? 'Click to edit · drag to move' : 'Click to set up this key',
-        onclick: () => { sel = i; drawGrid(); drawEditor(); } }, img, k ? null : h('span', { class: 'plus' }, '+'));
-      el.addEventListener('dragstart', () => { dragFrom = i; });
-      el.addEventListener('dragover', (e) => e.preventDefault());
-      el.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (dragFrom == null || dragFrom === i) return;
-        const p = layout.pages[pg];
-        p.keys = Array.from({ length: 15 }, (_, j) => (p.keys || [])[j] || null);
-        [p.keys[dragFrom], p.keys[i]] = [p.keys[i], p.keys[dragFrom]];
-        sel = i; dragFrom = null; save(); drawGrid(); drawEditor();
-      });
-      return el;
-    }));
+      const svg = DeckRender.renderKey(k ? views[i] || null : null);
+      if (svg !== ke.svg) { ke.svg = svg; ke.img.src = 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(svg); }
+      ke.el.classList.toggle('sel', sel === i);
+      ke.el.classList.toggle('empty', !k);
+      ke.plus.hidden = !!k;
+      ke.el.title = k ? 'Click to edit · drag to move' : 'Click to set up this key';
+    });
   }
 
   const field = (label, control) => h('div', { class: 'field' }, h('label', {}, label), control);
