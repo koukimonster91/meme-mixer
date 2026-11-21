@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.3 (2026-11-21)
+
+### Changed
+- The first noise gate (NoiseGate1) is now called **TV/AUX** instead of "Gate", and its meters are labelled **TV/AUX L / R**. Existing settings are renamed automatically; a gate name you changed yourself is kept.
+
 ## 1.5.2 (2026-11-21)
 
 ### Fixed

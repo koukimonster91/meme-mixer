@@ -250,11 +250,11 @@
   "presets": [],
   "noiseGates": [
     {
-      "name": "Gate",
+      "name": "TV/AUX",
       "tag": "NoiseGate1",
       "channels": [
-        "Gate 1",
-        "Gate 2"
+        "TV/AUX L",
+        "TV/AUX R"
       ]
     },
     {

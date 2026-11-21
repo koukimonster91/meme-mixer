@@ -60,7 +60,7 @@ On first run, open **Settings**:
 | Headphone 1–4, USB Out | Crosspoint level and mute for each source in the matrix mixer (Mic 1–4, TV/AUX, PC; USB Out has no PC), plus the output's Master level and mute. Source meters come from the Peak Meter after the Input Master. Each Master has its own L/R meter from that output's master peak meter (set in Settings). |
 | Matrix | Every crosspoint of the matrix mixer in one grid. Drag a cell up or down (or use the wheel) to set its level, click its dot to switch it on or off, or double-click it to type a level. |
 | Input Master | Level and mute for each Input Master channel. TV/AUX and PC L/R are linked by default; use the link button to unlink them. |
-| Noise Gate | Each noise gate (the main gate plus one per mic, NoiseGate1–5 by default): threshold, attack, release, bypass, and live gain-reduction meters. |
+| Noise Gate | Each noise gate (TV/AUX on NoiseGate1, Mic 1–4 on NoiseGate2–5 by default): threshold, attack, release, bypass, and live gain-reduction meters. |
 | Extras | Mute all outputs, mute one mic in every mix, copy a mix between outputs, scenes (snapshots saved on this PC), Tesira preset recall, phantom power and mic gain per AEC input, and a TTP command console. |
 | Stream Deck | Lay out the keys of the MemeMixer Stream Deck plugin: mutes, volume up/down, VU meters, scenes and page keys, with a live preview. |
 | Settings | Connection settings, network scan, auto-connect, instance tags, phone QR code and the event log. |

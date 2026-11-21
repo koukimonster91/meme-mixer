@@ -678,7 +678,7 @@ function Toggle(label, get, set, cls = '') {
 }
 
 // --- noise gate page: one block at a time, picked with the chips at the top
-const gateList = () => S.config.noiseGates || [{ name: 'Gate', tag: T().noiseGate, channels: S.config.noiseGateChannels || ['Gate'] }];
+const gateList = () => S.config.noiseGates || [{ name: 'TV/AUX', tag: T().noiseGate, channels: S.config.noiseGateChannels || ['Gate'] }];
 function renderGate() {
   const gates = gateList();
   let gi = Math.min(store.get('gate:sel', 0), gates.length - 1);

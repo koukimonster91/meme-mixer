@@ -69,14 +69,14 @@ const DEFAULT_CONFIG = {
     { name: 'PC L', channel: 7, meter: 7, link: 8 },
     { name: 'PC R', channel: 8, meter: 8, link: 7 },
   ],
-  noiseGateChannels: ['Gate 1', 'Gate 2'],
+  noiseGateChannels: ['TV/AUX L', 'TV/AUX R'],
   aecChannels: 12,
   meter: { min: -60, max: 24, yellow: 0, red: 18 },
   presets: [],
   // Noise Gate blocks shown on the Noise Gate page. Each block has one threshold / attack /
   // release / bypass; `channels` names its gain-reduction meters.
   noiseGates: [
-    { name: 'Gate', tag: 'NoiseGate1', channels: ['Gate 1', 'Gate 2'] },
+    { name: 'TV/AUX', tag: 'NoiseGate1', channels: ['TV/AUX L', 'TV/AUX R'] },
     { name: 'Mic 1', tag: 'NoiseGate2', channels: ['Mic 1'] },
     { name: 'Mic 2', tag: 'NoiseGate3', channels: ['Mic 2'] },
     { name: 'Mic 3', tag: 'NoiseGate4', channels: ['Mic 3'] },
@@ -116,7 +116,12 @@ function loadConfig() {
     // Before 1.5.0 there was one gate (tags.noiseGate): keep its tag and channel names, add the mic gates.
     cfg.noiseGates = structuredClone(DEFAULT_CONFIG.noiseGates);
     cfg.noiseGates[0].tag = cfg.tags.noiseGate || 'NoiseGate1';
-    if (Array.isArray(cfg.noiseGateChannels)) cfg.noiseGates[0].channels = cfg.noiseGateChannels;
+    if (Array.isArray(cfg.noiseGateChannels) && cfg.noiseGateChannels.join() !== 'Gate 1,Gate 2') cfg.noiseGates[0].channels = cfg.noiseGateChannels;
+    try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch {}
+  } else if (cfg.noiseGates[0] && cfg.noiseGates[0].name === 'Gate') {
+    // 1.5.0-1.5.2 called the TV/AUX gate just "Gate".
+    cfg.noiseGates[0].name = 'TV/AUX';
+    if ((cfg.noiseGates[0].channels || []).join() === 'Gate 1,Gate 2') cfg.noiseGates[0].channels = ['TV/AUX L', 'TV/AUX R'];
     try { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch {}
   }
   return cfg;

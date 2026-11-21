@@ -82,7 +82,7 @@ module.exports = function createDeck({ getConfig, getState, applyOps, getMeter, 
       }
       case 'gate': {
         // target.gate = index into config.noiseGates (older layouts have none: the first gate)
-        const gates = cfg().noiseGates || [{ name: 'Gate', tag: T().noiseGate, channels: cfg().noiseGateChannels || ['Gate'] }];
+        const gates = cfg().noiseGates || [{ name: 'TV/AUX', tag: T().noiseGate, channels: cfg().noiseGateChannels || ['Gate'] }];
         const g = gates[Number(t.gate) || 0];
         if (!g || !g.tag) return null;
         const tag = g.tag;
